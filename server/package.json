@@ -19,9 +19,13 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@google/genai": "^1.50.1",
     "axios": "^1.15.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
