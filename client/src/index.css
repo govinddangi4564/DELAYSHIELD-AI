@@ -4,31 +4,31 @@
 
 @layer base {
   body {
-    @apply bg-[#0b1120] text-slate-200 font-sans tracking-wide antialiased overflow-x-hidden;
-    /* Deep space background to match ultra-premium feel */
-    background-image: radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 400px),
-                      radial-gradient(circle at bottom left, rgba(139, 92, 246, 0.05), transparent 400px);
+    @apply bg-blue-50 text-blue-950 font-sans tracking-wide antialiased overflow-x-hidden;
+    background-image:
+      radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 500px),
+      radial-gradient(circle at bottom left, rgba(37, 99, 235, 0.08), transparent 500px);
   }
 }
 
 @layer components {
-  /* High-end glassmorphism base */
+  /* High-contrast glassmorphism panels — white cards on blue background */
   .glass-panel {
-    @apply bg-slate-900/40 backdrop-blur-xl border border-slate-700/40 rounded-2xl shadow-2xl;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
+    @apply bg-white border border-blue-200 rounded-2xl shadow-lg shadow-blue-100;
   }
 
   .glass-panel-hover {
-    @apply transition-all duration-300 hover:bg-slate-800/50 hover:border-slate-600/50 hover:-translate-y-1 hover:shadow-primary-500/10;
+    @apply transition-all duration-300 hover:shadow-xl hover:shadow-blue-200/50 hover:border-blue-400 hover:-translate-y-1;
   }
 
-  /* Upgraded buttons */
+  /* Bold primary button */
   .btn-primary {
-    @apply px-5 py-2.5 bg-gradient-to-r from-blue-600 to-primary-500 hover:from-blue-500 hover:to-primary-400 text-white rounded-xl transition-all duration-300 font-bold active:scale-95 shadow-lg shadow-blue-500/25;
+    @apply px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl transition-all duration-200 font-bold active:scale-95 shadow-md shadow-blue-500/30;
   }
 
+  /* Outlined secondary button */
   .btn-secondary {
-    @apply px-5 py-2.5 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-white rounded-xl transition-all duration-300 font-bold active:scale-95 shadow-lg;
+    @apply px-5 py-2.5 bg-white hover:bg-blue-50 border-2 border-blue-300 hover:border-blue-500 text-blue-700 rounded-xl transition-all duration-200 font-bold active:scale-95 shadow-sm;
   }
 }
 
@@ -47,18 +47,26 @@
   animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Scrollbar styling for that extra polish */
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent; 
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155; 
+  background: #cbd5e1;
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569; 
+  background: #94a3b8;
 }
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+}
+
