@@ -31,7 +31,7 @@ const DashboardPage = () => {
         message={getAlertMessage()} 
       />
       
-      <div className="p-8 max-w-[1600px] mx-auto animate-in fade-in duration-700 w-full">
+      <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-in fade-in duration-700 w-full">
       
       {/* ── Page Header ── */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -66,7 +66,7 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8">
         
         {/* LEFT COLUMN: Shipments (3/12) */}
-        <div className="lg:col-span-3 flex flex-col h-[550px]">
+        <div className="lg:col-span-3 flex flex-col h-[350px] lg:h-[550px]">
           <h2 className="text-xs font-black text-blue-900/40 uppercase tracking-widest mb-4 flex items-center gap-2 shrink-0">
             <span className="w-4 h-px bg-blue-200"></span> Active Shipments
           </h2>
@@ -83,7 +83,7 @@ const DashboardPage = () => {
         </div>
 
         {/* RIGHT COLUMN: Visualization Map (9/12) */}
-        <div className="lg:col-span-9 h-[550px] rounded-3xl overflow-hidden border border-blue-200 shadow-2xl shadow-blue-500/5 relative">
+        <div className="lg:col-span-9 h-[350px] lg:h-[550px] rounded-3xl overflow-hidden border border-blue-200 shadow-2xl shadow-blue-500/5 relative">
             <MapView shipment={selectedShipment} />
         </div>
       </div>

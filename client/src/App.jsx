@@ -4,6 +4,7 @@ import DashboardPage from './pages/DashboardPage';
 import ShipmentsPage from './pages/ShipmentsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
+import SimulationPage from './pages/SimulationPage';
 import Sidebar from './components/Sidebar';
 
 function App() {
@@ -14,7 +15,7 @@ function App() {
         <Sidebar />
 
         {/* Main Content Area */}
-        <main className="flex-1 ml-64 relative">
+        <main className="flex-1 ml-0 md:ml-64 pb-20 md:pb-0 relative">
           {/* Subtle dot grid overlay */}
           <div
             className="absolute inset-0 z-0 opacity-30 pointer-events-none"
@@ -28,6 +29,7 @@ function App() {
               <Route path="/shipments" element={<ShipmentsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/simulation" element={<SimulationPage />} />
             </Routes>
           </div>
         </main>

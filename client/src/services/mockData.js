@@ -161,3 +161,54 @@ export const simulateScenarios = async (scenarios) => {
     };
   });
 };
+
+export const simulateAdvancedScenarios = async (payload) => {
+  const { baseInput, scenarios } = payload;
+  
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 800));
+
+  const calculateMetrics = (trf, dly) => {
+    const rawRisk = (trf * 0.4) + (dly * 0.6);
+    const risk = Math.min(100, Math.round(rawRisk));
+    const baseCost = 800;
+    const cost = Math.round(baseCost + (trf * 2.5) + (dly * 8.0));
+    
+    let decision = 'Continue';
+    let riskLevel = 'Low';
+    if (risk > 75) { decision = 'Reroute'; riskLevel = 'Critical'; }
+    else if (risk > 50) { decision = 'Delay'; riskLevel = 'High'; }
+    else if (risk > 30) { decision = 'Monitor'; riskLevel = 'Medium'; }
+
+    return { risk, cost, decision, riskLevel, traffic: trf, delay: dly };
+  };
+
+  const baseMetrics = calculateMetrics(parseInt(baseInput.traffic, 10), parseInt(baseInput.delay, 10));
+
+  const results = scenarios.map(scenario => {
+    const simMetrics = calculateMetrics(parseInt(scenario.traffic, 10), parseInt(scenario.delay, 10));
+    
+    const riskChange = simMetrics.risk - baseMetrics.risk;
+    const costChange = simMetrics.cost - baseMetrics.cost;
+    const decisionChange = baseMetrics.decision !== simMetrics.decision ? `${baseMetrics.decision} → ${simMetrics.decision}` : simMetrics.decision;
+    
+    // Simple impact score (0-100), higher is worse change
+    let impactScore = Math.min(100, Math.max(0, 50 + (riskChange * 0.5) + (costChange / 10)));
+    
+    return {
+      id: scenario.id,
+      name: `Scenario ${scenario.id}`,
+      original: { ...baseMetrics },
+      simulated: { ...simMetrics },
+      difference: {
+        riskChange,
+        costChange,
+        decisionChange
+      },
+      impactScore: Math.round(impactScore)
+    };
+  });
+
+  return results;
+};
+
