@@ -10,7 +10,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const AI_PROVIDER = (process.env.AI_PROVIDER || "gemini").toLowerCase();
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite-preview";
 const LLM_BASE_URL = (process.env.LLM_BASE_URL || "http://localhost:11434/v1")
   .replace(/\/+$/, "");
 const LLM_MODEL = process.env.LLM_MODEL || "llama3.2";
@@ -200,12 +200,26 @@ const fallbackResponse = (input, errorInfo = null) => {
   };
 };
 
-const callGemini = async (prompt) => {
-  const result = await gemini.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: prompt,
-  });
-  return result?.text;
+const callGemini = async (prompt, retryCount = 0) => {
+  try {
+    const result = await gemini.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+    });
+    return result?.text;
+  } catch (error) {
+    // If it's a 503 or UNAVAILABLE error, retry up to 2 times with a small delay
+    const isRetryable = error?.code === 503 ||
+      error?.status === "UNAVAILABLE" ||
+      /high demand|overloaded/i.test(error?.message);
+
+    if (isRetryable && retryCount < 2) {
+      console.warn(`[aiPlanner] Gemini busy (503). Retrying... (${retryCount + 1}/2)`);
+      await new Promise(resolve => setTimeout(resolve, 1500 * (retryCount + 1)));
+      return callGemini(prompt, retryCount + 1);
+    }
+    throw error;
+  }
 };
 
 const callOpenAICompatible = async (prompt) => {
