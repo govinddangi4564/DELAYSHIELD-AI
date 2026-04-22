@@ -24,7 +24,6 @@ export default function SimulationPanel() {
   ]);
   const [stressMode, setStressMode] = useState(false);
   const [loading,    setLoading]    = useState(false);
-  const [apiNote,    setApiNote]    = useState("");
 
   function addScenario() {
     setScenarios(prev => [...prev, { id: _nextId++, traffic: "", delay: "" }]);
@@ -39,7 +38,6 @@ export default function SimulationPanel() {
 
   async function runSimulation() {
     setLoading(true);
-    setApiNote("");
 
     const builtScenarios = scenarios.map(s => ({
       traffic: s.traffic !== "" ? (stressMode ? Math.round(s.traffic * 1.5) : s.traffic) : (stressMode ? Math.round(baseInput.traffic * 1.5) : baseInput.traffic),
@@ -67,7 +65,6 @@ export default function SimulationPanel() {
         impactScore: Math.round(Math.abs(s.risk - original.risk) * 0.6 + Math.abs(s.cost - original.cost) * 0.0004 * 40),
       }));
       data = { original, simulated, comparison };
-      setApiNote("Demo mode — /api/simulation unreachable");
     }
 
     setLoading(false);
@@ -156,7 +153,6 @@ export default function SimulationPanel() {
           onClick={runSimulation} disabled={loading}>
           {loading ? "Running…" : "Run simulation →"}
         </button>
-        {apiNote && <span className="text-xs text-amber-700">{apiNote}</span>}
       </div>
     </div>
   );
