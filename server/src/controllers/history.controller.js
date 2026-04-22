@@ -24,3 +24,20 @@ export const getShipmentHistory = (req, res) => {
     history
   });
 };
+export const createHistoryEntry = (req, res) => {
+  const { shipmentId, route, decision, riskScore, costImpact } = req.body;
+  
+  if (!shipmentId || !decision) {
+    return res.status(400).json({
+      success: false,
+      message: "Shipment ID and Decision are required"
+    });
+  }
+
+  const record = addHistory({ shipmentId, route, decision, riskScore, costImpact });
+  
+  return res.status(201).json({
+    success: true,
+    data: record
+  });
+};

@@ -1,8 +1,3 @@
-/**
- * simulation.route.js
- * Route definitions for What-If Simulation Engine
- */
-
 import { Router } from "express";
 import {
   runSingleSimulation,
@@ -12,7 +7,7 @@ import {
 const router = Router();
 
 // ----------------------------
-// HEALTH CHECK (🔥 DEMO BOOST)
+// HEALTH CHECK
 // ----------------------------
 router.get("/health", (req, res) => {
   return res.status(200).json({
@@ -23,18 +18,23 @@ router.get("/health", (req, res) => {
 });
 
 // ----------------------------
-// SINGLE SIMULATION
+// MULTI-SCENARIO SIMULATION (Main Endpoint)
 // ----------------------------
-router.post("/run", (req, res, next) => {
-  console.log("📊 /simulation/run called");
-  runSingleSimulation(req, res, next);
+router.post("/", (req, res, next) => {
+  console.log("📊 /api/simulation called (Multi-Scenario)");
+  runMultipleSimulations(req, res, next);
 });
 
 // ----------------------------
-// MULTIPLE SIMULATION
+// SINGLE SCENARIO SIMULATION
 // ----------------------------
+router.post("/run", (req, res, next) => {
+  console.log("📊 /api/simulation/run called (Single)");
+  runSingleSimulation(req, res, next);
+});
+
+// Legacy support (optional, can be removed)
 router.post("/run-multiple", (req, res, next) => {
-  console.log("📊 /simulation/run-multiple called");
   runMultipleSimulations(req, res, next);
 });
 

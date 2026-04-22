@@ -4,8 +4,8 @@ import DashboardPage from './pages/DashboardPage';
 import ShipmentsPage from './pages/ShipmentsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
-import SimulationPage from './pages/SimulationPage';
 import Sidebar from './components/Sidebar';
+import SimulationPage from './pages/SimulationPage';
 
 function App() {
   return (

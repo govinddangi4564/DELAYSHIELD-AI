@@ -1,8 +1,41 @@
 import React from 'react';
 import { BrainCircuit, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 
-const DecisionPanel = ({ insights }) => {
-  if (!insights) return null;
+const DecisionPanel = ({ insights, onExecute }) => {
+  const [executing, setExecuting] = React.useState(false);
+  const [executed, setExecuted] = React.useState(false);
+
+  if (!insights) {
+    return (
+      <div className="glass-panel p-6 h-full flex flex-col border-2 border-blue-100 opacity-60">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-slate-200 rounded-lg text-slate-400">
+            <BrainCircuit size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-300">AI Intelligence</h2>
+            <p className="text-sm text-slate-300">Analyzing route data...</p>
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-2xl p-8">
+           <div className="animate-pulse bg-slate-100 h-4 w-3/4 rounded-full mb-3" />
+           <div className="animate-pulse bg-slate-100 h-4 w-1/2 rounded-full mb-3" />
+           <div className="animate-pulse bg-slate-100 h-10 w-full rounded-xl mt-4" />
+        </div>
+      </div>
+    );
+  }
+
+  const handleExecute = (type) => {
+    setExecuting(true);
+    // Simulate API transmission
+    setTimeout(() => {
+      setExecuting(false);
+      setExecuted(true);
+      if (onExecute) onExecute(type);
+      setTimeout(() => setExecuted(false), 3000);
+    }, 1200);
+  };
 
   return (
     <div className="glass-panel p-6 h-full flex flex-col border-2 border-blue-200">
@@ -52,11 +85,11 @@ const DecisionPanel = ({ insights }) => {
                 </span>
               </div>
               <span className={`text-xs font-black px-2 py-1 rounded-lg whitespace-nowrap shrink-0 ${
-                action.costImpact.includes('+')
+                action.costImpact?.includes('+')
                   ? action.recommended ? 'bg-red-400/30 text-red-100' : 'bg-red-100 text-red-700'
                   : action.recommended ? 'bg-emerald-400/30 text-emerald-100' : 'bg-emerald-100 text-emerald-700'
               }`}>
-                {action.costImpact}
+                {action.costImpact || 'TBD'}
               </span>
             </div>
 
@@ -70,8 +103,29 @@ const DecisionPanel = ({ insights }) => {
             </p>
 
             {action.recommended && (
-              <button className="w-full bg-white hover:bg-blue-50 text-blue-700 font-black text-sm py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow">
-                Execute Action <ArrowRight size={14} />
+              <button 
+                onClick={() => handleExecute(action.type)}
+                disabled={executing || executed}
+                className={`w-full font-black text-sm py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all shadow active:scale-95 ${
+                  executed 
+                    ? 'bg-emerald-500 text-white' 
+                    : 'bg-white hover:bg-blue-50 text-blue-700'
+                }`}
+              >
+                {executing ? (
+                   <>
+                    <span className="w-4 h-4 border-2 border-blue-600 border-b-transparent rounded-full animate-spin" />
+                    Transmitting...
+                  </>
+                ) : executed ? (
+                  <>
+                    <CheckCircle2 size={16} /> Plan Activated
+                  </>
+                ) : (
+                  <>
+                    Execute Action <ArrowRight size={14} />
+                  </>
+                )}
               </button>
             )}
           </div>

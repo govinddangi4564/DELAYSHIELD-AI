@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { GoogleMap, useJsApiLoader, MarkerF, PolylineF, InfoWindowF } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, MarkerF, PolylineF, InfoWindowF, CircleF } from '@react-google-maps/api';
 import { MapPin, Route, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+import { getCityTraffic } from '../services/api';
 
 const mapContainerStyle = {
   width: '100%',
@@ -53,7 +54,57 @@ const generateAltRoutes = (start, end) => {
   };
 };
 
-const MapView = ({ shipment }) => {
+const decodePolyline = (encoded) => {
+  if (!encoded) return [];
+  
+  // Handle GeoJSON format (array of [lon, lat])
+  if (typeof encoded === 'object' && encoded.coordinates) {
+    return encoded.coordinates.map(coord => ({
+      lat: coord[1],
+      lng: coord[0]
+    }));
+  }
+  
+  // Handle raw array format
+  if (Array.isArray(encoded)) {
+    return encoded.map(coord => ({
+      lat: coord[1],
+      lng: coord[0]
+    }));
+  }
+
+  if (typeof encoded !== 'string') return [];
+
+  let poly = [];
+  let index = 0, len = encoded.length;
+  let lat = 0, lng = 0;
+
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+
+    poly.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+  return poly;
+};
+
+const MapView = ({ shipment, route }) => {
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ""
@@ -65,7 +116,32 @@ const MapView = ({ shipment }) => {
   // Layer Toggles
   const [showMain, setShowMain] = useState(true);
   const [showAlt, setShowAlt] = useState(true);
+  const [showTraffic, setShowTraffic] = useState(true);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // City traffic data from API
+  const [cityTrafficData, setCityTrafficData] = useState([]);
+
+  // Fetch city traffic on mount
+  useEffect(() => {
+    const fetchTraffic = async () => {
+      try {
+        const data = await getCityTraffic();
+        setCityTrafficData(data);
+      } catch (err) {
+        console.error('Failed to fetch city traffic:', err);
+      }
+    };
+    fetchTraffic();
+  }, []);
+
+  // Get traffic circle color based on traffic score
+  const getTrafficColor = (traffic) => {
+    if (traffic >= 80) return { fill: '#ef4444', stroke: '#dc2626' }; // red
+    if (traffic >= 60) return { fill: '#f59e0b', stroke: '#d97706' }; // amber
+    if (traffic >= 40) return { fill: '#3b82f6', stroke: '#2563eb' }; // blue
+    return { fill: '#10b981', stroke: '#059669' }; // green
+  };
 
   // Animated Position State
   const [animatedPos, setAnimatedPos] = useState(null);
@@ -88,6 +164,14 @@ const MapView = ({ shipment }) => {
     }
   }, [map, shipment]);
 
+  // Decode actual highway path from geometry
+  const decodedMainPath = useMemo(() => {
+    if (route?.geometry) {
+      return decodePolyline(route.geometry);
+    }
+    return null;
+  }, [route]);
+
   // Handle Live Tracker Animation Loop
   useEffect(() => {
     if (!shipment) {
@@ -102,24 +186,63 @@ const MapView = ({ shipment }) => {
     const endLoc = shipment.destination;
 
     const tick = () => {
-      progress += 0.002; // Update speed
-      if (progress > 1) progress = 0; // Loop tracking gracefully
+      progress += 0.0015; // Speed adjustment
+      if (progress > 1) progress = 0; 
       
-      const newLat = startLoc.lat + (endLoc.lat - startLoc.lat) * progress;
-      const newLng = startLoc.lng + (endLoc.lng - startLoc.lng) * progress;
+      if (decodedMainPath && decodedMainPath.length > 0) {
+        // Follow the actual road path
+        const totalPoints = decodedMainPath.length;
+        const index = Math.floor(progress * (totalPoints - 1));
+        const nextIndex = Math.min(index + 1, totalPoints - 1);
+        
+        // Sub-segment interpolation for smooth movement
+        const segmentProgress = (progress * (totalPoints - 1)) - index;
+        const p1 = decodedMainPath[index];
+        const p2 = decodedMainPath[nextIndex];
+        
+        if (p1 && p2) {
+          const newLat = p1.lat + (p2.lat - p1.lat) * segmentProgress;
+          const newLng = p1.lng + (p2.lng - p1.lng) * segmentProgress;
+          setAnimatedPos({ lat: newLat, lng: newLng });
+        }
+      } else if (startLoc && endLoc) {
+        // Fallback to straight line
+        const newLat = startLoc.lat + (endLoc.lat - startLoc.lat) * progress;
+        const newLng = startLoc.lng + (endLoc.lng - startLoc.lng) * progress;
+        setAnimatedPos({ lat: newLat, lng: newLng });
+      }
       
-      setAnimatedPos({ lat: newLat, lng: newLng });
       animId = requestAnimationFrame(tick);
     };
     
     animId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animId);
-  }, [shipment]);
+  }, [shipment, decodedMainPath]);
 
   const altRoutes = useMemo(() => {
     if (!shipment) return null;
-    return generateAltRoutes(shipment.origin, shipment.destination);
-  }, [shipment]);
+    
+    let alt1 = [];
+    let alt2 = [];
+    let generated = null;
+
+    if (route?.alt1Geometry) {
+      alt1 = decodePolyline(route.alt1Geometry);
+    } else {
+      generated = generated || generateAltRoutes(shipment.origin, shipment.destination);
+      alt1 = generated.alt1;
+    }
+
+    if (route?.alt2Geometry) {
+      alt2 = decodePolyline(route.alt2Geometry);
+    } else {
+      generated = generated || generateAltRoutes(shipment.origin, shipment.destination);
+      alt2 = generated.alt2;
+    }
+
+    return { alt1, alt2 };
+  }, [shipment, route]);
+
 
   if (!shipment) {
     return (
@@ -130,15 +253,20 @@ const MapView = ({ shipment }) => {
     );
   }
 
-  const positionsMainCompleted = [
-    { lat: shipment.origin.lat, lng: shipment.origin.lng },
-    { lat: shipment.currentLocation.lat, lng: shipment.currentLocation.lng }
-  ];
+  // Fallback to straight line if no route geometry
+  const positionsMainCompleted = decodedMainPath 
+    ? decodedMainPath.slice(0, Math.floor(decodedMainPath.length * 0.4)) // approximation
+    : [
+        { lat: shipment.origin.lat, lng: shipment.origin.lng },
+        { lat: shipment.currentLocation.lat, lng: shipment.currentLocation.lng }
+      ];
   
-  const positionsMainRemaining = [
-    { lat: shipment.currentLocation.lat, lng: shipment.currentLocation.lng },
-    { lat: shipment.destination.lat, lng: shipment.destination.lng }
-  ];
+  const positionsMainRemaining = decodedMainPath
+    ? decodedMainPath.slice(Math.floor(decodedMainPath.length * 0.4))
+    : [
+        { lat: shipment.currentLocation.lat, lng: shipment.currentLocation.lng },
+        { lat: shipment.destination.lat, lng: shipment.destination.lng }
+      ];
 
   return (
     <div className="w-full h-full glass-panel overflow-hidden min-h-[500px] relative rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-lg">
@@ -160,37 +288,41 @@ const MapView = ({ shipment }) => {
           }}
         >
           {/* Origin Marker */}
-          <MarkerF 
-            position={{ lat: shipment.origin.lat, lng: shipment.origin.lng }}
-            onClick={() => setActivePopup('origin')}
-          >
-            {activePopup === 'origin' && (
-              <InfoWindowF onCloseClick={() => setActivePopup(null)}>
-                <div className="text-slate-800 p-1">
-                  <strong>Origin: {shipment.origin.name}</strong><br/>
-                  <span className="text-xs text-slate-500 font-normal">Departed</span>
-                </div>
-              </InfoWindowF>
-            )}
-          </MarkerF>
+          {shipment?.origin && (
+            <MarkerF 
+              position={{ lat: shipment.origin.lat, lng: shipment.origin.lng }}
+              onClick={() => setActivePopup('origin')}
+            >
+              {activePopup === 'origin' && (
+                <InfoWindowF onCloseClick={() => setActivePopup(null)}>
+                  <div className="text-slate-800 p-1">
+                    <strong>Origin: {shipment.origin.name}</strong><br/>
+                    <span className="text-xs text-slate-500 font-normal">Departed</span>
+                  </div>
+                </InfoWindowF>
+              )}
+            </MarkerF>
+          )}
           
           {/* Destination Marker */}
-          <MarkerF 
-            position={{ lat: shipment.destination.lat, lng: shipment.destination.lng }}
-            onClick={() => setActivePopup('destination')}
-          >
-             {activePopup === 'destination' && (
-              <InfoWindowF onCloseClick={() => setActivePopup(null)}>
-                <div className="text-slate-800 p-1">
-                  <strong>Destination: {shipment.destination.name}</strong><br/>
-                  <span className="text-xs text-slate-500 font-normal">ETA: {shipment.etas.updated}</span>
-                </div>
-              </InfoWindowF>
-            )}
-          </MarkerF>
+          {shipment?.destination && (
+            <MarkerF 
+              position={{ lat: shipment.destination.lat, lng: shipment.destination.lng }}
+              onClick={() => setActivePopup('destination')}
+            >
+               {activePopup === 'destination' && (
+                <InfoWindowF onCloseClick={() => setActivePopup(null)}>
+                  <div className="text-slate-800 p-1">
+                    <strong>Destination: {shipment.destination.name}</strong><br/>
+                    <span className="text-xs text-slate-500 font-normal">ETA: {shipment.etas?.updated}</span>
+                  </div>
+                </InfoWindowF>
+              )}
+            </MarkerF>
+          )}
 
           {/* Animated Tracker Marker */}
-          {animatedPos && (
+          {animatedPos?.lat != null && animatedPos?.lng != null && window.google?.maps && (
              <MarkerF 
                 position={animatedPos} 
                 onClick={() => setActivePopup('tracker')}
@@ -204,7 +336,7 @@ const MapView = ({ shipment }) => {
                   <InfoWindowF onCloseClick={() => setActivePopup(null)}>
                     <div className="text-slate-800 p-1 font-bold">
                       <span className="text-blue-600">Live Tracker</span><br/>
-                      <span className="text-xs text-slate-600 font-normal">Status: {shipment.status}</span>
+                      <span className="text-xs text-slate-600 font-normal">Status: {shipment?.status}</span>
                     </div>
                   </InfoWindowF>
                 )}
@@ -215,31 +347,73 @@ const MapView = ({ shipment }) => {
           {showMain && (
             <>
               {/* Completed Line */}
-              <PolylineF 
-                path={positionsMainCompleted}
-                options={{ strokeColor: '#10b981', strokeWeight: 4, strokeOpacity: 0.9 }}
-                onClick={() => setActivePopup('mainC')}
-              />
-              {activePopup === 'mainC' && (
-                <InfoWindowF position={positionsMainCompleted[1]} onCloseClick={() => setActivePopup(null)}>
-                   <div className="text-slate-800"><strong className="text-emerald-700">Completed Route</strong><br/>Successfully traveled.</div>
+              {positionsMainCompleted?.length > 0 && (
+                <PolylineF 
+                  path={positionsMainCompleted}
+                  options={{ strokeColor: '#10b981', strokeWeight: 4, strokeOpacity: 0.9 }}
+                  onClick={() => setActivePopup('mainC')}
+                />
+              )}
+              {activePopup === 'mainC' && positionsMainCompleted?.length > 0 && (
+                <InfoWindowF position={positionsMainCompleted[Math.floor(positionsMainCompleted.length / 2)]} onCloseClick={() => setActivePopup(null)}>
+                   <div className="text-slate-800">
+                     <strong className="text-emerald-700">Completed Route</strong><br/>
+                     Successfully traveled.<br/>
+                     {route?.majorRoads?.length > 0 && <span className="text-xs text-slate-500">Via {route.majorRoads.join(', ')}</span>}
+                   </div>
                 </InfoWindowF>
               )}
 
-              {/* Remaining Line (Dashed via icons workaround for Google Maps, or simple solid) */}
-              <PolylineF 
-                path={positionsMainRemaining}
-                options={{ 
-                  strokeOpacity: 0, 
-                  icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '15px' }],
-                  strokeColor: '#3b82f6', 
-                  strokeWeight: 4 
-                }}
-                onClick={() => setActivePopup('mainR')}
-              />
-              {activePopup === 'mainR' && (
+              {/* Remaining Line Highlight Glow */}
+              {positionsMainRemaining?.length > 0 && (
+                <PolylineF 
+                  path={positionsMainRemaining}
+                  options={{ 
+                    strokeOpacity: 0.4, 
+                    strokeColor: '#60a5fa', 
+                    strokeWeight: 12,
+                    clickable: false
+                  }}
+                />
+              )}
+              {/* Remaining Line Core */}
+              {positionsMainRemaining?.length > 0 && (
+                <PolylineF 
+                  path={positionsMainRemaining}
+                  options={{ 
+                    strokeOpacity: 1, 
+                    strokeColor: '#1d4ed8', 
+                    strokeWeight: 5 
+                  }}
+                  onClick={() => setActivePopup('mainR')}
+                />
+              )}
+              
+              {/* NH Label for Main Route */}
+              {route?.majorRoads?.length > 0 && positionsMainRemaining?.length > 0 && window.google?.maps && (
+                <MarkerF
+                  position={positionsMainRemaining[Math.floor(positionsMainRemaining.length / 2)]}
+                  label={{
+                    text: route.majorRoads[0]?.split(',')[0] || 'Route',
+                    color: '#ffffff',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                  }}
+                  icon={{
+                    url: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="54" height="20" viewBox="0 0 54 20"><rect width="54" height="20" rx="10" fill="%231d4ed8" stroke="white" stroke-width="1.5"/></svg>',
+                    scaledSize: new window.google.maps.Size(54, 20),
+                    anchor: new window.google.maps.Point(27, 10)
+                  }}
+                />
+              )}
+
+              {activePopup === 'mainR' && positionsMainRemaining?.length > 0 && (
                 <InfoWindowF position={positionsMainRemaining[0]} onCloseClick={() => setActivePopup(null)}>
-                   <div className="text-slate-800"><strong className="text-blue-700">AI Primary Path</strong><br/>Optimal trajectory.</div>
+                   <div className="text-slate-800">
+                     <strong className="text-blue-700">AI Primary Path</strong><br/>
+                     Optimal trajectory.<br/>
+                     {route?.majorRoads?.length > 0 && <span className="text-xs font-semibold text-slate-600">Route: {route.majorRoads.join(', ')}</span>}
+                   </div>
                 </InfoWindowF>
               )}
             </>
@@ -248,29 +422,108 @@ const MapView = ({ shipment }) => {
           {/* Alternate Routes Layer */}
           {showAlt && altRoutes && (
             <>
+              {/* Alt 1 */}
               <PolylineF 
                 path={altRoutes.alt1}
-                options={{ strokeColor: '#eab308', strokeWeight: 3, strokeOpacity: 0.8 }}
+                options={{ strokeColor: '#fbbf24', strokeWeight: 5, strokeOpacity: 0.9 }}
                 onClick={() => setActivePopup('alt1')}
               />
-              {activePopup === 'alt1' && (
+              {altRoutes.alt1?.length > 1 && window.google?.maps && (
+                <MarkerF
+                  position={altRoutes.alt1[1]}
+                  label={{
+                    text: route?.suggestedAltRoads?.[0] || 'NH46',
+                    color: '#ffffff',
+                    fontSize: '10px',
+                    fontWeight: 'bold'
+                  }}
+                  icon={{
+                    url: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="46" height="18" viewBox="0 0 46 18"><rect width="46" height="18" rx="9" fill="%23b45309" stroke="white" stroke-width="1.5"/></svg>',
+                    scaledSize: new window.google.maps.Size(46, 18),
+                    anchor: new window.google.maps.Point(23, 9)
+                  }}
+                />
+              )}
+              {activePopup === 'alt1' && altRoutes.alt1?.length > 1 && (
                  <InfoWindowF position={altRoutes.alt1[1]} onCloseClick={() => setActivePopup(null)}>
-                   <div className="text-slate-800"><strong>Alternate Route 1</strong><br/>Traffic bypass.</div>
+                   <div className="text-slate-800">
+                     <strong>Alternate Route 1</strong><br/>
+                     Traffic bypass.<br/>
+                     <span className="text-xs text-slate-500">Via {route?.suggestedAltRoads?.[0] || 'NH46'}</span>
+                   </div>
                  </InfoWindowF>
               )}
 
+              {/* Alt 2 */}
               <PolylineF 
                 path={altRoutes.alt2}
-                options={{ strokeColor: '#f97316', strokeWeight: 3, strokeOpacity: 0.8 }}
+                options={{ strokeColor: '#f97316', strokeWeight: 4, strokeOpacity: 0.8 }}
                 onClick={() => setActivePopup('alt2')}
               />
-               {activePopup === 'alt2' && (
+              {altRoutes.alt2?.length > 1 && window.google?.maps && (
+                <MarkerF
+                  position={altRoutes.alt2[1]}
+                  label={{
+                    text: route?.suggestedAltRoads?.[1] || 'NH52',
+                    color: '#ffffff',
+                    fontSize: '10px',
+                    fontWeight: 'bold'
+                  }}
+                  icon={{
+                    url: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="46" height="18" viewBox="0 0 46 18"><rect width="46" height="18" rx="9" fill="%23c2410c" stroke="white" stroke-width="1.5"/></svg>',
+                    scaledSize: new window.google.maps.Size(46, 18),
+                    anchor: new window.google.maps.Point(23, 9)
+                  }}
+                />
+              )}
+               {activePopup === 'alt2' && altRoutes.alt2?.length > 1 && (
                  <InfoWindowF position={altRoutes.alt2[1]} onCloseClick={() => setActivePopup(null)}>
-                   <div className="text-slate-800"><strong>Alternate Route 2</strong><br/>Weather storm bypass.</div>
+                   <div className="text-slate-800">
+                     <strong>Alternate Route 2</strong><br/>
+                     Weather storm bypass.<br/>
+                     <span className="text-xs text-slate-500">Via {route?.suggestedAltRoads?.[1] || 'NH52'}</span>
+                   </div>
                  </InfoWindowF>
               )}
             </>
           )}
+
+          {/* City Traffic Overlay */}
+          {showTraffic && cityTrafficData?.map((city, idx) => {
+            const colors = getTrafficColor(city.traffic);
+            if (!city.lat || !city.lon) return null;
+            return (
+              <CircleF
+                key={`traffic-${idx}`}
+                center={{ lat: city.lat, lng: city.lon }}
+                radius={30000}
+                options={{
+                  fillColor: colors.fill,
+                  fillOpacity: 0.35,
+                  strokeColor: colors.stroke,
+                  strokeOpacity: 0.8,
+                  strokeWeight: 2,
+                  clickable: true,
+                }}
+                onClick={() => setActivePopup(`traffic-${idx}`)}
+              />
+            );
+          })}
+          {showTraffic && cityTrafficData?.map((city, idx) => (
+            activePopup === `traffic-${idx}` && city.lat && city.lon && (
+              <InfoWindowF
+                key={`info-traffic-${idx}`}
+                position={{ lat: city.lat, lng: city.lon }}
+                onCloseClick={() => setActivePopup(null)}
+              >
+                <div className="text-slate-800 p-1">
+                  <strong>{city.name}</strong><br/>
+                  <span className="text-xs text-slate-500">Traffic: <strong>{city.traffic}</strong></span><br/>
+                  <span className="text-xs text-slate-400">{city.state}</span>
+                </div>
+              </InfoWindowF>
+            )
+          ))}
         </GoogleMap>
       ) : (
         <div className="w-full h-full flex items-center justify-center">
@@ -313,6 +566,14 @@ const MapView = ({ shipment }) => {
                 <span className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-orange-400 shadow-sm shadow-orange-500/50" /> Alternatives</span>
                 {showAlt ? <Eye size={14} /> : <EyeOff size={14} className="opacity-50" />}
               </button>
+
+              <button 
+                onClick={() => setShowTraffic(!showTraffic)}
+                className="flex items-center justify-between w-full text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+              >
+                <span className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-400 shadow-sm shadow-red-500/50" /> City Traffic</span>
+                {showTraffic ? <Eye size={14} /> : <EyeOff size={14} className="opacity-50" />}
+              </button>
             </div>
 
             {/* Legend */}
@@ -328,6 +589,10 @@ const MapView = ({ shipment }) => {
               <div className="flex items-start gap-2 text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
                  <div className="w-6 h-1 mt-1 shrink-0 bg-orange-500 rounded" />
                  <p><strong className="text-slate-700 dark:text-slate-300">Alt 2:</strong> Weather/Storm bypass.</p>
+              </div>
+              <div className="flex items-start gap-2 text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                 <div className="w-3 h-3 mt-0.5 shrink-0 bg-red-400/40 rounded-full border border-red-500" />
+                 <p><strong className="text-slate-700 dark:text-slate-300">Traffic:</strong> City congestion zones (live API).</p>
               </div>
             </div>
           </div>

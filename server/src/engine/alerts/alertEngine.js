@@ -1,46 +1,56 @@
 /**
  * alertEngine.js
  * Proactive Alert System for DelayShield AI.
+ * Unifies AI Insights, Risk Engine, and Decision Outcomes.
  */
 
-export const generateAlert = ({ risk = {}, decision = {}, delay = 0, traffic = 0 }) => {
+export const generateAlert = ({ risk = {}, decision = {}, aiInsights = null }) => {
   const { score = 0, level = "Low" } = risk;
+  const action = decision.action || "MONITOR";
   
-  // 1. High Risk Check
-  if (score > 80) {
+  // 1. AI-Driven "Deep Insight" Alert (Highest Priority)
+  if (aiInsights && aiInsights.summary && (score > 40 || action !== "CONTINUE")) {
     return {
       alert: true,
-      type: "HIGH_RISK",
-      message: "Critical risk detected. Immediate rerouting required.",
-      severity: "High"
-    };
-  }
-  
-  // 2. High Delay Check
-  if (delay > 60) {
-    return {
-      alert: true,
-      type: "DELAY",
-      message: "Significant delay threshold crossed. Monitoring or action advised.",
-      severity: "Medium"
+      type: "AI_INSIGHT",
+      message: aiInsights.summary,
+      severity: level,
+      action: action,
+      timestamp: new Date().toISOString()
     };
   }
 
-  // 3. High Traffic Check
-  if (traffic > 85) {
+  // 2. High Risk / Reroute Protocol
+  if (score > 70 || action === "REROUTE") {
     return {
       alert: true,
-      type: "TRAFFIC",
-      message: "Heavy traffic condition detected causing potential bottlenecks.",
-      severity: "Medium"
+      type: "CRITICAL",
+      message: "Tactical Reroute required due to high operational risk factors.",
+      severity: "High",
+      action: "REROUTE",
+      timestamp: new Date().toISOString()
+    };
+  }
+  
+  // 3. Moderate Monitoring Alert
+  if (score > 40 || action === "MONITOR") {
+    return {
+      alert: true,
+      type: "MONITORING",
+      message: "Enhanced surveillance active. Moderate risk detected in next transit sector.",
+      severity: "Medium",
+      action: "MONITOR",
+      timestamp: new Date().toISOString()
     };
   }
 
-  // Fallback
+  // 4. Baseline Operational Status
   return {
     alert: false,
-    type: "NONE",
-    message: "Conditions are normal.",
-    severity: "Low"
+    type: "NORMAL",
+    message: "Operational conditions are stable. Tactical surveillance active.",
+    severity: "Low",
+    action: "CONTINUE",
+    timestamp: new Date().toISOString()
   };
 };

@@ -39,11 +39,28 @@ const ShipmentCard = ({ shipment, isSelected, onClick }) => {
           </span>
         </div>
 
-        <div className="flex items-start gap-2 text-sm">
+        {/* Quick Metrics Row */}
+        <div className="flex items-center justify-between bg-blue-50/50 p-2 rounded-xl border border-blue-100/50 gap-2">
+          <div className="flex flex-col items-center flex-1">
+             <span className="text-[9px] font-black text-blue-400 uppercase">Traffic</span>
+             <span className="text-xs font-bold text-blue-900">{shipment.riskFactors?.traffic}%</span>
+          </div>
+          <div className="w-px h-4 bg-blue-200" />
+          <div className="flex flex-col items-center flex-1">
+             <span className="text-[9px] font-black text-blue-400 uppercase">Weather</span>
+             <span className="text-xs font-bold text-blue-900">{shipment.riskFactors?.weather}°C</span>
+          </div>
+          <div className="w-px h-4 bg-blue-200" />
+          <div className="flex flex-col items-center flex-1">
+             <span className="text-[9px] font-black text-blue-400 uppercase">Delay</span>
+             <span className="text-xs font-bold text-amber-600">+{shipment.riskFactors?.delay}m</span>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2 text-sm pt-1">
           <Clock size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
           <div className="flex flex-col">
-            <span className="text-xs text-blue-500 font-medium">ETA: {shipment.etas.original}</span>
-            <span className="font-bold text-amber-600">Updated: {shipment.etas.updated}</span>
+            <span className="text-[10px] text-blue-500 font-medium">ETA: {shipment.etas.original}</span>
           </div>
         </div>
       </div>

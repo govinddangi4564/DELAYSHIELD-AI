@@ -11,6 +11,7 @@ export const addHistory = (record) => {
     route: record.route || "Unknown Route",
     decision: record.decision || "UNKNOWN",
     riskScore: record.riskScore || 0,
+    costImpact: record.costImpact || "$0",
     timestamp: new Date().toISOString(),
   };
   

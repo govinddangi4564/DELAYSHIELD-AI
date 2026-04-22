@@ -1,6 +1,38 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import Chart from 'chart.js/auto';
+import { Chart } from 'chart.js';
+import {
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  RadarController,
+  BarController,
+  LineController,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  RadialLinearScale,
+} from 'chart.js';
+
+// Register Chart.js components
+Chart.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  RadarController,
+  BarController,
+  LineController,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  RadialLinearScale
+);
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -21,6 +53,75 @@ function bestIndex(simulated) {
 
 const SC_PALETTE = ["#93c5fd", "#4ade80", "#f87171", "#fbbf24", "#e879f9", "#2dd4bf"]; // Tailwind 400 shades
 
+function toNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeRun(run = {}) {
+  const risk = typeof run.risk === "object"
+    ? toNumber(run.risk?.score)
+    : toNumber(run.risk);
+  const cost = typeof run.cost === "object"
+    ? toNumber(run.cost?.noActionCost ?? run.cost?.totalCost ?? run.cost?.cost)
+    : toNumber(run.cost);
+  const decision = typeof run.decision === "object"
+    ? run.decision?.action
+    : run.decision;
+
+  return {
+    risk,
+    cost,
+    decision: decision || "UNKNOWN",
+  };
+}
+
+function normalizeComparison(item = {}) {
+  const diff = item.difference ?? {};
+  return {
+    difference: {
+      risk: toNumber(diff.risk ?? diff.riskScoreChange),
+      cost: toNumber(diff.cost ?? diff.costChange),
+      decisionChange: diff.decisionChange ?? null,
+    },
+    impactScore: toNumber(item.impactScore ?? diff.impactScore),
+  };
+}
+
+function normalizeSimulationData(payload) {
+  if (!payload) return null;
+
+  if (Array.isArray(payload.data)) {
+    const first = payload.data[0];
+    if (!first?.original) return null;
+
+    return {
+      original: normalizeRun(first.original),
+      simulated: payload.data.map((item) => normalizeRun(item.simulated)),
+      comparison: payload.data.map(normalizeComparison),
+    };
+  }
+
+  if (payload.data?.original) {
+    return normalizeSimulationData(payload.data);
+  }
+
+  if (payload.original) {
+    return {
+      original: normalizeRun(payload.original),
+      simulated: (payload.simulated ?? []).map(normalizeRun),
+      comparison: (payload.comparison ?? []).map(normalizeComparison),
+    };
+  }
+
+  return null;
+}
+
+function normalizeScenarioNames(names, count) {
+  if (Array.isArray(names) && names.length === count + 1) return names;
+  return ["Base", ...Array.from({ length: count }, (_, index) => `S${index + 1}`)];
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SimulationPage() {
@@ -36,6 +137,17 @@ export default function SimulationPage() {
   }
 
   const { data, scNames } = state;
+  const normalizedData = normalizeSimulationData(data);
+
+  if (!normalizedData) {
+    return (
+      <div className="max-w-[720px] mx-auto py-16 text-center text-slate-500">
+        Simulation results could not be displayed. Please run the simulation again.
+      </div>
+    );
+  }
+
+  const normalizedNames = normalizeScenarioNames(scNames, normalizedData.simulated.length);
 
   return (
     <div className="max-w-[720px] py-4 md:py-6 mx-auto w-full px-2 sm:px-0">
@@ -46,8 +158,8 @@ export default function SimulationPage() {
         </div>
       </div>
       <ResultsSection 
-        data={data}
-        scNames={scNames}
+        data={normalizedData}
+        scNames={normalizedNames}
       />
     </div>
   );
