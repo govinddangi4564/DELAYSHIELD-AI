@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import L from 'leaflet';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import L from "leaflet";
 import {
   MapContainer,
   TileLayer,
@@ -7,17 +7,64 @@ import {
   Popup,
   Polyline,
   Circle,
+  ScaleControl,
+  ZoomControl,
   useMap,
-} from 'react-leaflet';
-import { MapPin, Route, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+} from "react-leaflet";
+import {
+  MapPin,
+  Route,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronUp,
+  Maximize2,
+  Minimize2,
+} from "lucide-react";
 
-const TILE_LAYER_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const CLASSIC_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const CLEAN_TILE_URL =
+  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+const SATELLITE_TILE_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const SATELLITE_LABELS_TILE_URL =
+  "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+const TILE_ATTRIBUTION =
+  "&copy; OpenStreetMap contributors &copy; CARTO &copy; Esri";
+const CLASSIC_TILE_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+const getFullscreenElement = () =>
+  document.fullscreenElement || document.webkitFullscreenElement || null;
+
+const requestElementFullscreen = async (element) => {
+  if (!element) return;
+
+  if (element.requestFullscreen) {
+    await element.requestFullscreen();
+    return;
+  }
+
+  if (element.webkitRequestFullscreen) {
+    element.webkitRequestFullscreen();
+  }
+};
+
+const exitDocumentFullscreen = async () => {
+  if (document.exitFullscreen) {
+    await document.exitFullscreen();
+    return;
+  }
+
+  if (document.webkitExitFullscreen) {
+    document.webkitExitFullscreen();
+  }
+};
 
 const decodePolyline = (encoded) => {
   if (!encoded) return [];
 
-  if (typeof encoded === 'object' && encoded.coordinates) {
+  if (typeof encoded === "object" && encoded.coordinates) {
     return encoded.coordinates.map((coord) => ({
       lat: coord[1],
       lng: coord[0],
@@ -31,7 +78,7 @@ const decodePolyline = (encoded) => {
     }));
   }
 
-  if (typeof encoded !== 'string') return [];
+  if (typeof encoded !== "string") return [];
 
   const poly = [];
   let index = 0;
@@ -49,7 +96,7 @@ const decodePolyline = (encoded) => {
       shift += 5;
     } while (b >= 0x20);
 
-    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
 
     shift = 0;
     result = 0;
@@ -60,7 +107,7 @@ const decodePolyline = (encoded) => {
       shift += 5;
     } while (b >= 0x20);
 
-    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
 
     poly.push({ lat: lat / 1e5, lng: lng / 1e5 });
   }
@@ -69,22 +116,23 @@ const decodePolyline = (encoded) => {
 };
 
 const getTrafficColor = (traffic) => {
-  if (traffic >= 80) return { fill: '#ef4444', stroke: '#dc2626' };
-  if (traffic >= 60) return { fill: '#f59e0b', stroke: '#d97706' };
-  if (traffic >= 40) return { fill: '#3b82f6', stroke: '#2563eb' };
-  return { fill: '#10b981', stroke: '#059669' };
+  if (traffic >= 80) return { fill: "#ef4444", stroke: "#dc2626" };
+  if (traffic >= 60) return { fill: "#f59e0b", stroke: "#d97706" };
+  if (traffic >= 40) return { fill: "#3b82f6", stroke: "#2563eb" };
+  return { fill: "#10b981", stroke: "#059669" };
 };
 
-const geometrySignature = (geometry) => JSON.stringify(geometry?.coordinates ?? []);
+const geometrySignature = (geometry) =>
+  JSON.stringify(geometry?.coordinates ?? []);
 
 const buildOsrmUrl = (coordinates) => {
-  const coords = coordinates.map(([lng, lat]) => `${lng},${lat}`).join(';');
+  const coords = coordinates.map(([lng, lat]) => `${lng},${lat}`).join(";");
   return `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&alternatives=true&steps=false`;
 };
 
 const fetchOsrmRoute = async (coordinates, signal) => {
   const response = await fetch(buildOsrmUrl(coordinates), { signal });
-  if (!response.ok) throw new Error('OSRM route request failed');
+  if (!response.ok) throw new Error("OSRM route request failed");
   const payload = await response.json();
   return payload.routes ?? [];
 };
@@ -108,20 +156,6 @@ const buildAlternateWaypoints = (start, end) => {
     [midLng + unitPerpLng * offset, midLat + unitPerpLat * offset],
     [midLng - unitPerpLng * offset, midLat - unitPerpLat * offset],
   ];
-};
-
-const mapCoordinatesFromGeoJson = (geometry) => {
-  const coordinates = geometry?.coordinates ?? [];
-  return coordinates.map((coord) => ({
-    lat: coord[1],
-    lng: coord[0],
-  }));
-};
-
-const distanceBetween = (a, b) => {
-  const dLat = a.lat - b.lat;
-  const dLng = a.lng - b.lng;
-  return (dLat * dLat) + (dLng * dLng);
 };
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -154,26 +188,52 @@ const smoothBearing = (previous, next, factor = 0.18) => {
   return previous + delta * factor;
 };
 
-const findNearestPointIndex = (points, target) => {
-  if (!points.length || !target) return 0;
+const sanitizeRoadName = (value) => String(value || "").trim();
 
-  let bestIndex = 0;
-  let bestDistance = Number.POSITIVE_INFINITY;
+const buildLabelPoints = (path = [], labels = []) => {
+  if (
+    !Array.isArray(path) ||
+    path.length < 2 ||
+    !Array.isArray(labels) ||
+    labels.length === 0
+  ) {
+    return [];
+  }
 
-  points.forEach((point, index) => {
-    const currentDistance = distanceBetween(point, target);
-    if (currentDistance < bestDistance) {
-      bestDistance = currentDistance;
-      bestIndex = index;
+  const uniqueLabels = labels.filter(Boolean);
+  const maxLabels = Math.min(uniqueLabels.length, Math.max(path.length - 2, 0));
+  if (maxLabels === 0) return [];
+
+  const usedIndexes = new Set();
+
+  return uniqueLabels.slice(0, maxLabels).map((label, idx) => {
+    const rawIndex = Math.round(
+      ((idx + 1) * (path.length - 1)) / (maxLabels + 1),
+    );
+    const clampedIndex = Math.min(Math.max(rawIndex, 1), path.length - 2);
+    let finalIndex = clampedIndex;
+
+    while (usedIndexes.has(finalIndex) && finalIndex < path.length - 2) {
+      finalIndex += 1;
     }
-  });
 
-  return bestIndex;
+    while (usedIndexes.has(finalIndex) && finalIndex > 1) {
+      finalIndex -= 1;
+    }
+
+    usedIndexes.add(finalIndex);
+
+    return {
+      label,
+      point: path[finalIndex],
+      index: finalIndex,
+    };
+  });
 };
 
 const createPinIcon = (color, glyph) =>
   L.divIcon({
-    className: 'leaflet-custom-pin',
+    className: "leaflet-custom-pin",
     html: `
       <div style="position:relative;width:28px;height:40px;display:flex;align-items:flex-start;justify-content:center;">
         <div style="width:28px;height:28px;border-radius:9999px;background:${color};border:3px solid rgba(255,255,255,0.92);box-shadow:0 10px 25px rgba(15,23,42,0.28);display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:900;">
@@ -196,7 +256,7 @@ const createTrackerIcon = (motion = {}) => {
   const windowShift = facingScale > 0 ? 0.9 : -0.9;
 
   return L.divIcon({
-    className: 'leaflet-tracker-pin',
+    className: "leaflet-tracker-pin",
     html: `
       <div style="position:relative;width:72px;height:52px;display:flex;align-items:center;justify-content:center;">
         <div style="position:absolute;bottom:7px;width:42px;height:10px;border-radius:9999px;background:rgba(15,23,42,0.18);filter:blur(4px);"></div>
@@ -257,29 +317,36 @@ const createTrackerIcon = (motion = {}) => {
 
 const createRouteLabelIcon = (background, text) =>
   L.divIcon({
-    className: 'leaflet-route-label',
+    className: "leaflet-route-label",
     html: `
-      <div style="padding:3px 10px;border-radius:9999px;background:${background};color:white;font-size:10px;font-weight:800;border:1.5px solid rgba(255,255,255,0.95);box-shadow:0 8px 18px rgba(15,23,42,0.2);white-space:nowrap;">
-        ${text}
+      <div style="padding:2px 7px;border-radius:9999px;background:${background};color:white;border:1.5px solid rgba(255,255,255,0.95);box-shadow:0 8px 18px rgba(15,23,42,0.2);white-space:nowrap;max-width:132px;overflow:hidden;text-overflow:ellipsis;line-height:1;">
+        <span style="display:block;font-size:7px;font-weight:800;letter-spacing:0.2px;line-height:1;overflow:hidden;text-overflow:ellipsis;">
+          ${text}
+        </span>
       </div>
     `,
-    iconSize: [70, 24],
-    iconAnchor: [35, 12],
+    iconSize: [132, 18],
+    iconAnchor: [66, 9],
   });
 
-function FitBounds({ shipment }) {
+function FitBounds({ shipment, routePath = [] }) {
   const map = useMap();
 
   useEffect(() => {
     if (!shipment) return;
 
-    const bounds = L.latLngBounds(
-      [shipment.origin.lat, shipment.origin.lng],
-      [shipment.destination.lat, shipment.destination.lng],
-    );
+    let bounds;
+    if (routePath.length > 1) {
+      bounds = L.latLngBounds(routePath.map((point) => [point.lat, point.lng]));
+    } else {
+      bounds = L.latLngBounds(
+        [shipment.origin.lat, shipment.origin.lng],
+        [shipment.destination.lat, shipment.destination.lng],
+      );
+    }
 
     map.fitBounds(bounds, { padding: [50, 50] });
-  }, [map, shipment]);
+  }, [map, shipment, routePath]);
 
   return null;
 }
@@ -295,27 +362,78 @@ function RefreshMapSize() {
   return null;
 }
 
+function ResizeOnChange({ triggerKey }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => map.invalidateSize(), 120);
+    return () => window.clearTimeout(timer);
+  }, [map, triggerKey]);
+
+  return null;
+}
+
 const MapView = ({ shipment, route, cityTrafficData = [] }) => {
   const [showMain, setShowMain] = useState(true);
   const [showAlt, setShowAlt] = useState(true);
-  const [showTraffic, setShowTraffic] = useState(true);
+  const [showTraffic, setShowTraffic] = useState(false);
+  const [mapStyle, setMapStyle] = useState("classic");
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [animatedPos, setAnimatedPos] = useState(null);
   const [realRoadData, setRealRoadData] = useState(null);
+  const containerRef = useRef(null);
   const bearingRef = useRef(0);
-  const needsRoadFallback = Boolean(shipment) && (!route?.geometry || route?.isSimulated);
-  const isRoadGeometryReady = !needsRoadFallback || Boolean(realRoadData?.geometry);
+  const shipmentKey = shipment
+    ? `${shipment.id}-${shipment.origin.lat}-${shipment.origin.lng}-${shipment.destination.lat}-${shipment.destination.lng}`
+    : null;
+  const needsRoadFallback =
+    Boolean(shipment) && (!route?.geometry || route?.isSimulated);
+  const hasMatchedRoadGeometry =
+    Boolean(realRoadData?.geometry) &&
+    realRoadData?.shipmentKey === shipmentKey;
+  const isRoadGeometryReady = !needsRoadFallback || hasMatchedRoadGeometry;
+  const resizeTrigger = `${isFullscreen}-${isPanelOpen}-${mapStyle}-${shipmentKey || "none"}`;
 
   useEffect(() => {
-    if (!shipment) {
-      setRealRoadData(null);
-      return undefined;
-    }
+    const onFullscreenChange = () => {
+      const fullscreenElement = getFullscreenElement();
+      setIsFullscreen(
+        Boolean(
+          fullscreenElement &&
+          containerRef.current &&
+          containerRef.current.contains(fullscreenElement),
+        ),
+      );
+    };
 
-    if (!needsRoadFallback) {
-      setRealRoadData(null);
-      return undefined;
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        onFullscreenChange,
+      );
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (isFullscreen) {
+        await exitDocumentFullscreen();
+      } else {
+        await requestElementFullscreen(containerRef.current);
+      }
+    } catch {
+      // Fallback overlay mode if Fullscreen API fails.
+      setIsFullscreen((prev) => !prev);
     }
+  };
+
+  useEffect(() => {
+    if (!shipment || !needsRoadFallback) return undefined;
 
     const controller = new AbortController();
 
@@ -323,10 +441,13 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
       try {
         const start = shipment.origin;
         const end = shipment.destination;
-        const routes = await fetchOsrmRoute([
-          [start.lng, start.lat],
-          [end.lng, end.lat],
-        ], controller.signal);
+        const routes = await fetchOsrmRoute(
+          [
+            [start.lng, start.lat],
+            [end.lng, end.lat],
+          ],
+          controller.signal,
+        );
         const primary = routes[0];
 
         if (!primary?.geometry) return;
@@ -336,7 +457,11 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
 
         routes.slice(1).forEach((candidate) => {
           const signature = geometrySignature(candidate.geometry);
-          if (candidate?.geometry && !seen.has(signature) && alternates.length < 2) {
+          if (
+            candidate?.geometry &&
+            !seen.has(signature) &&
+            alternates.length < 2
+          ) {
             seen.add(signature);
             alternates.push(candidate.geometry);
           }
@@ -349,11 +474,10 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
             if (alternates.length >= 2) break;
 
             try {
-              const variantRoutes = await fetchOsrmRoute([
-                [start.lng, start.lat],
-                waypoint,
-                [end.lng, end.lat],
-              ], controller.signal);
+              const variantRoutes = await fetchOsrmRoute(
+                [[start.lng, start.lat], waypoint, [end.lng, end.lat]],
+                controller.signal,
+              );
 
               const variant = variantRoutes[0];
               const signature = geometrySignature(variant?.geometry);
@@ -362,21 +486,25 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
                 alternates.push(variant.geometry);
               }
             } catch (variantError) {
-              if (variantError.name !== 'AbortError') {
-                console.warn('Leaflet alternate route fetch failed:', variantError);
+              if (variantError.name !== "AbortError") {
+                console.warn(
+                  "Leaflet alternate route fetch failed:",
+                  variantError,
+                );
               }
             }
           }
         }
 
         setRealRoadData({
+          shipmentKey,
           geometry: primary.geometry,
           alt1Geometry: alternates[0] ?? null,
           alt2Geometry: alternates[1] ?? null,
         });
       } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.warn('Leaflet fallback route fetch failed:', error);
+        if (error.name !== "AbortError") {
+          console.warn("Leaflet fallback route fetch failed:", error);
         }
       }
     };
@@ -384,19 +512,31 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
     fetchRoadGeometry();
 
     return () => controller.abort();
-  }, [shipment, route?.geometry, route?.isSimulated]);
+  }, [
+    needsRoadFallback,
+    shipment,
+    shipmentKey,
+    route?.geometry,
+    route?.isSimulated,
+  ]);
 
   const decodedMainPath = useMemo(() => {
-    const geometrySource = realRoadData?.geometry ?? route?.geometry;
+    const matchedGeometry =
+      realRoadData?.shipmentKey === shipmentKey ? realRoadData?.geometry : null;
+    const geometrySource = matchedGeometry ?? route?.geometry;
     if (geometrySource) {
       return decodePolyline(geometrySource);
     }
     return null;
-  }, [realRoadData?.geometry, route?.geometry]);
+  }, [
+    realRoadData?.geometry,
+    realRoadData?.shipmentKey,
+    route?.geometry,
+    shipmentKey,
+  ]);
 
   useEffect(() => {
     if (!shipment) {
-      setAnimatedPos(null);
       bearingRef.current = 0;
       return undefined;
     }
@@ -415,7 +555,7 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
         const totalPoints = decodedMainPath.length;
         const index = Math.floor(progress * (totalPoints - 1));
         const nextIndex = Math.min(index + 1, totalPoints - 1);
-        const segmentProgress = (progress * (totalPoints - 1)) - index;
+        const segmentProgress = progress * (totalPoints - 1) - index;
         const p1 = decodedMainPath[index];
         const lookAheadIndex = Math.min(index + 6, totalPoints - 1);
         const p2 = decodedMainPath[nextIndex];
@@ -432,7 +572,11 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
           });
         }
       } else if (!needsRoadFallback && startLoc && endLoc) {
-        bearingRef.current = smoothBearing(bearingRef.current, getSegmentBearing(startLoc, endLoc), 0.12);
+        bearingRef.current = smoothBearing(
+          bearingRef.current,
+          getSegmentBearing(startLoc, endLoc),
+          0.12,
+        );
         setAnimatedPos({
           lat: startLoc.lat + (endLoc.lat - startLoc.lat) * progress,
           lng: startLoc.lng + (endLoc.lng - startLoc.lng) * progress,
@@ -452,58 +596,119 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
   const altRoutes = useMemo(() => {
     if (!shipment) return null;
 
-    const alt1 = (realRoadData?.alt1Geometry ?? route?.alt1Geometry)
-      ? decodePolyline(realRoadData?.alt1Geometry ?? route?.alt1Geometry)
-      : [];
+    const matchedRoadData =
+      realRoadData?.shipmentKey === shipmentKey ? realRoadData : null;
 
-    const alt2 = (realRoadData?.alt2Geometry ?? route?.alt2Geometry)
-      ? decodePolyline(realRoadData?.alt2Geometry ?? route?.alt2Geometry)
-      : [];
+    const alt1 =
+      (matchedRoadData?.alt1Geometry ?? route?.alt1Geometry)
+        ? decodePolyline(matchedRoadData?.alt1Geometry ?? route?.alt1Geometry)
+        : [];
+
+    const alt2 =
+      (matchedRoadData?.alt2Geometry ?? route?.alt2Geometry)
+        ? decodePolyline(matchedRoadData?.alt2Geometry ?? route?.alt2Geometry)
+        : [];
 
     return { alt1, alt2 };
-  }, [shipment, route, realRoadData]);
+  }, [shipment, shipmentKey, route, realRoadData]);
 
   if (!shipment) {
     return (
       <div className="w-full h-full glass-panel flex flex-col items-center justify-center min-h-[400px]">
         <MapPin size={48} className="text-slate-300 mb-4" />
-        <p className="text-slate-500 font-bold">Select a shipment to begin live tracking.</p>
+        <p className="text-slate-500 font-bold">
+          Select a shipment to begin live tracking.
+        </p>
       </div>
     );
   }
 
-  const positionsMainCompleted = decodedMainPath
-    ? decodedMainPath.slice(0, Math.max(findNearestPointIndex(decodedMainPath, shipment.currentLocation), 1))
-    : [];
+  const mainPathPositions = decodedMainPath || [];
 
-  const positionsMainRemaining = decodedMainPath
-    ? decodedMainPath.slice(Math.max(findNearestPointIndex(decodedMainPath, shipment.currentLocation), 0))
-    : [];
-
-  const mainLabelPosition = positionsMainRemaining[Math.floor(positionsMainRemaining.length / 2)];
   const alt1LabelPosition = altRoutes?.alt1?.[1];
   const alt2LabelPosition = altRoutes?.alt2?.[1];
+  const routeSourceLabel =
+    route?.source || (realRoadData?.geometry ? "osrm-live" : "unknown");
+  const primaryRoads = (route?.majorRoads || [])
+    .map(sanitizeRoadName)
+    .filter(Boolean)
+    .slice(0, 8);
+  const altRoads = (route?.suggestedAltRoads || [])
+    .map(sanitizeRoadName)
+    .filter(Boolean)
+    .slice(0, 2);
+  const mainRoadLabel = primaryRoads[0] || "Primary Route";
+  const routeInlineLabels = buildLabelPoints(
+    mainPathPositions,
+    (primaryRoads.length > 0 ? primaryRoads : [mainRoadLabel]).slice(0, 2),
+  );
+  const cycleMapStyle = () => {
+    setMapStyle((prev) => {
+      if (prev === "classic") return "clean";
+      if (prev === "clean") return "satellite";
+      return "classic";
+    });
+  };
+  const mapStyleLabel =
+    mapStyle === "classic"
+      ? "Classic"
+      : mapStyle === "clean"
+        ? "Clean"
+        : "Satellite";
 
   return (
-    <div className="w-full h-full glass-panel overflow-hidden min-h-[500px] relative rounded-2xl border border-slate-200 shadow-lg">
+    <div
+      ref={containerRef}
+      className={`w-full h-full glass-panel overflow-hidden min-h-[500px] relative border border-slate-200 shadow-lg transition-all duration-300 ${
+        isFullscreen
+          ? "fixed inset-0 z-[1200] rounded-none border-0"
+          : "rounded-2xl"
+      }`}
+    >
       <MapContainer
         center={[shipment.currentLocation.lat, shipment.currentLocation.lng]}
         zoom={6}
+        maxZoom={18}
         scrollWheelZoom
         className="w-full h-full"
         zoomControl={false}
+        preferCanvas
       >
         <RefreshMapSize />
-        <FitBounds shipment={shipment} />
-        <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_LAYER_URL} />
+        <ResizeOnChange triggerKey={resizeTrigger} />
+        <FitBounds shipment={shipment} routePath={decodedMainPath || []} />
+        <ZoomControl position="bottomright" />
+        <ScaleControl position="bottomleft" imperial={false} />
+
+        {mapStyle === "classic" ? (
+          <TileLayer
+            attribution={CLASSIC_TILE_ATTRIBUTION}
+            url={CLASSIC_TILE_URL}
+          />
+        ) : mapStyle === "clean" ? (
+          <TileLayer attribution={TILE_ATTRIBUTION} url={CLEAN_TILE_URL} />
+        ) : (
+          <>
+            <TileLayer
+              attribution={TILE_ATTRIBUTION}
+              url={SATELLITE_TILE_URL}
+            />
+            <TileLayer
+              attribution={TILE_ATTRIBUTION}
+              url={SATELLITE_LABELS_TILE_URL}
+              pane="overlayPane"
+            />
+          </>
+        )}
 
         <Marker
           position={[shipment.origin.lat, shipment.origin.lng]}
-          icon={createPinIcon('#059669', 'O')}
+          icon={createPinIcon("#059669", "O")}
         >
           <Popup>
             <div className="text-slate-800">
-              <strong>Origin: {shipment.origin.name}</strong><br />
+              <strong>Origin: {shipment.origin.name}</strong>
+              <br />
               <span className="text-xs text-slate-500">Departed</span>
             </div>
           </Popup>
@@ -511,12 +716,15 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
 
         <Marker
           position={[shipment.destination.lat, shipment.destination.lng]}
-          icon={createPinIcon('#dc2626', 'D')}
+          icon={createPinIcon("#dc2626", "D")}
         >
           <Popup>
             <div className="text-slate-800">
-              <strong>Destination: {shipment.destination.name}</strong><br />
-              <span className="text-xs text-slate-500">ETA: {shipment.etas?.updated}</span>
+              <strong>Destination: {shipment.destination.name}</strong>
+              <br />
+              <span className="text-xs text-slate-500">
+                ETA: {shipment.etas?.updated}
+              </span>
             </div>
           </Popup>
         </Marker>
@@ -528,133 +736,212 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
           >
             <Popup>
               <div className="text-slate-800 font-bold">
-                <span className="text-blue-600">Live Tracker</span><br />
-                <span className="text-xs text-slate-600 font-normal">Status: {shipment.status}</span>
+                <span className="text-blue-600">Live Tracker</span>
+                <br />
+                <span className="text-xs text-slate-600 font-normal">
+                  Status: {shipment.status}
+                </span>
               </div>
             </Popup>
           </Marker>
         )}
 
-        {showMain && positionsMainCompleted.length > 0 && (
-          <Polyline
-            positions={positionsMainCompleted.map((point) => [point.lat, point.lng])}
-            pathOptions={{ color: '#10b981', weight: 4, opacity: 0.9 }}
-          >
-            <Popup>
-              <div className="text-slate-800">
-                <strong className="text-emerald-700">Completed Route</strong><br />
-                Successfully traveled.<br />
-                {route?.majorRoads?.length > 0 && (
-                  <span className="text-xs text-slate-500">Via {route.majorRoads.join(', ')}</span>
-                )}
-              </div>
-            </Popup>
-          </Polyline>
-        )}
-
-        {showMain && positionsMainRemaining.length > 0 && (
+        {showMain && mainPathPositions.length > 0 && (
           <>
             <Polyline
-              positions={positionsMainRemaining.map((point) => [point.lat, point.lng])}
-              pathOptions={{ color: '#60a5fa', weight: 12, opacity: 0.35 }}
+              positions={mainPathPositions.map((point) => [
+                point.lat,
+                point.lng,
+              ])}
+              pathOptions={{
+                color: "#172554",
+                weight: 10,
+                opacity: 0.28,
+                lineCap: "round",
+              }}
             />
             <Polyline
-              positions={positionsMainRemaining.map((point) => [point.lat, point.lng])}
-              pathOptions={{ color: '#1d4ed8', weight: 5, opacity: 1 }}
+              positions={mainPathPositions.map((point) => [
+                point.lat,
+                point.lng,
+              ])}
+              pathOptions={{
+                color: "#93c5fd",
+                weight: 6.2,
+                opacity: 0.8,
+                lineCap: "round",
+              }}
+            />
+            <Polyline
+              positions={mainPathPositions.map((point) => [
+                point.lat,
+                point.lng,
+              ])}
+              pathOptions={{
+                color: "#1d4ed8",
+                weight: 3.8,
+                opacity: 1,
+                lineCap: "round",
+              }}
             >
               <Popup>
                 <div className="text-slate-800">
-                  <strong className="text-blue-700">AI Primary Path</strong><br />
-                  Optimal trajectory.<br />
+                  <strong className="text-blue-700">AI Primary Path</strong>
+                  <br />
+                  Origin to destination recommended route.
+                  <br />
                   {route?.majorRoads?.length > 0 && (
-                    <span className="text-xs font-semibold text-slate-600">Route: {route.majorRoads.join(', ')}</span>
+                    <span className="text-xs font-semibold text-slate-600">
+                      Route: {route.majorRoads.join(", ")}
+                    </span>
                   )}
                 </div>
               </Popup>
             </Polyline>
-            {route?.majorRoads?.length > 0 && mainLabelPosition && (
+            {routeInlineLabels.map((item, idx) => (
               <Marker
-                position={[mainLabelPosition.lat, mainLabelPosition.lng]}
-                icon={createRouteLabelIcon('#1d4ed8', route.majorRoads[0]?.split(',')[0] || 'Route')}
+                key={`main-road-label-${idx}-${item.index}`}
+                position={[item.point.lat, item.point.lng]}
+                icon={createRouteLabelIcon("#1d4ed8", item.label)}
               />
-            )}
+            ))}
           </>
         )}
 
         {showAlt && altRoutes && (
           <>
             {altRoutes.alt1.length > 1 && (
-              <Polyline
-                positions={altRoutes.alt1.map((point) => [point.lat, point.lng])}
-                pathOptions={{ color: '#fbbf24', weight: 5, opacity: 0.9 }}
-              >
-                <Popup>
-                  <div className="text-slate-800">
-                    <strong>Alternate Route 1</strong><br />
-                    Traffic bypass.<br />
-                    <span className="text-xs text-slate-500">Via {route?.suggestedAltRoads?.[0] || 'Alt Route 1'}</span>
-                  </div>
-                </Popup>
-              </Polyline>
+              <>
+                <Polyline
+                  positions={altRoutes.alt1.map((point) => [
+                    point.lat,
+                    point.lng,
+                  ])}
+                  pathOptions={{
+                    color: "#78350f",
+                    weight: 7,
+                    opacity: 0.25,
+                    lineCap: "round",
+                  }}
+                />
+                <Polyline
+                  positions={altRoutes.alt1.map((point) => [
+                    point.lat,
+                    point.lng,
+                  ])}
+                  pathOptions={{
+                    color: "#fbbf24",
+                    weight: 4.2,
+                    opacity: 0.95,
+                    dashArray: "10 8",
+                    lineCap: "round",
+                  }}
+                >
+                  <Popup>
+                    <div className="text-slate-800">
+                      <strong>Alternate Route 1</strong>
+                      <br />
+                      Traffic bypass.
+                      <br />
+                      <span className="text-xs text-slate-500">
+                        Via {route?.suggestedAltRoads?.[0] || "Alt Route 1"}
+                      </span>
+                    </div>
+                  </Popup>
+                </Polyline>
+              </>
             )}
             {alt1LabelPosition && (
               <Marker
                 position={[alt1LabelPosition.lat, alt1LabelPosition.lng]}
-                icon={createRouteLabelIcon('#b45309', route?.suggestedAltRoads?.[0] || 'Alt 1')}
+                icon={createRouteLabelIcon("#b45309", altRoads[0] || "Alt 1")}
               />
             )}
 
             {altRoutes.alt2.length > 1 && (
-              <Polyline
-                positions={altRoutes.alt2.map((point) => [point.lat, point.lng])}
-                pathOptions={{ color: '#f97316', weight: 4, opacity: 0.8 }}
-              >
-                <Popup>
-                  <div className="text-slate-800">
-                    <strong>Alternate Route 2</strong><br />
-                    Weather storm bypass.<br />
-                    <span className="text-xs text-slate-500">Via {route?.suggestedAltRoads?.[1] || 'Alt Route 2'}</span>
-                  </div>
-                </Popup>
-              </Polyline>
+              <>
+                <Polyline
+                  positions={altRoutes.alt2.map((point) => [
+                    point.lat,
+                    point.lng,
+                  ])}
+                  pathOptions={{
+                    color: "#7c2d12",
+                    weight: 6.5,
+                    opacity: 0.24,
+                    lineCap: "round",
+                  }}
+                />
+                <Polyline
+                  positions={altRoutes.alt2.map((point) => [
+                    point.lat,
+                    point.lng,
+                  ])}
+                  pathOptions={{
+                    color: "#f97316",
+                    weight: 3.8,
+                    opacity: 0.9,
+                    dashArray: "8 6",
+                    lineCap: "round",
+                  }}
+                >
+                  <Popup>
+                    <div className="text-slate-800">
+                      <strong>Alternate Route 2</strong>
+                      <br />
+                      Weather storm bypass.
+                      <br />
+                      <span className="text-xs text-slate-500">
+                        Via {route?.suggestedAltRoads?.[1] || "Alt Route 2"}
+                      </span>
+                    </div>
+                  </Popup>
+                </Polyline>
+              </>
             )}
             {alt2LabelPosition && (
               <Marker
                 position={[alt2LabelPosition.lat, alt2LabelPosition.lng]}
-                icon={createRouteLabelIcon('#c2410c', route?.suggestedAltRoads?.[1] || 'Alt 2')}
+                icon={createRouteLabelIcon("#c2410c", altRoads[1] || "Alt 2")}
               />
             )}
           </>
         )}
 
-        {showTraffic && cityTrafficData.map((city, idx) => {
-          if (!city.lat || !city.lon) return null;
+        {showTraffic &&
+          cityTrafficData.map((city, idx) => {
+            if (!Number.isFinite(city.lat) || !Number.isFinite(city.lon))
+              return null;
 
-          const colors = getTrafficColor(city.traffic);
+            const colors = getTrafficColor(city.traffic);
 
-          return (
-            <Circle
-              key={`traffic-${idx}`}
-              center={[city.lat, city.lon]}
-              radius={30000}
-              pathOptions={{
-                fillColor: colors.fill,
-                fillOpacity: 0.35,
-                color: colors.stroke,
-                opacity: 0.8,
-                weight: 2,
-              }}
-            >
-              <Popup>
-                <div className="text-slate-800">
-                  <strong>{city.name}</strong><br />
-                  <span className="text-xs text-slate-500">Traffic: <strong>{city.traffic}</strong></span><br />
-                  <span className="text-xs text-slate-400">{city.state}</span>
-                </div>
-              </Popup>
-            </Circle>
-          );
-        })}
+            return (
+              <Circle
+                key={`traffic-${idx}`}
+                center={[city.lat, city.lon]}
+                radius={30000}
+                pathOptions={{
+                  fillColor: colors.fill,
+                  fillOpacity: 0.35,
+                  color: colors.stroke,
+                  opacity: 0.8,
+                  weight: 2,
+                }}
+              >
+                <Popup>
+                  <div className="text-slate-800">
+                    <strong>{city.name}</strong>
+                    <br />
+                    <span className="text-xs text-slate-500">
+                      Traffic: <strong>{city.traffic}</strong>
+                    </span>
+                    <br />
+                    <span className="text-xs text-slate-400">{city.state}</span>
+                  </div>
+                </Popup>
+              </Circle>
+            );
+          })}
       </MapContainer>
 
       {!isRoadGeometryReady && (
@@ -663,16 +950,35 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
         </div>
       )}
 
+      <div className="absolute left-4 top-4 z-[998] rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-[10px] font-bold text-slate-700 shadow-lg backdrop-blur-md">
+        Route source: {String(routeSourceLabel).replace(/-/g, " ")}
+      </div>
+
+      <button
+        onClick={toggleFullscreen}
+        className="absolute left-4 top-16 z-[999] inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-[10px] font-bold text-slate-700 shadow-lg backdrop-blur-md hover:bg-white"
+        title={isFullscreen ? "Exit full screen map" : "Open full screen map"}
+      >
+        {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+        {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+      </button>
+
       <div className="absolute top-4 right-4 z-[999] bg-white/90 backdrop-blur-md border border-slate-200 p-3 lg:p-4 rounded-xl shadow-xl flex flex-col max-w-xs transition-all duration-300">
         <div
-          className={`flex items-center justify-between cursor-pointer gap-4 ${isPanelOpen ? 'border-b border-slate-200 pb-2 mb-4' : ''}`}
+          className={`flex items-center justify-between cursor-pointer gap-4 ${isPanelOpen ? "border-b border-slate-200 pb-2 mb-4" : ""}`}
           onClick={() => setIsPanelOpen(!isPanelOpen)}
         >
           <div className="flex items-center gap-2">
             <Route size={18} className="text-indigo-500" />
-            <h3 className="font-black text-slate-800 text-sm tracking-tight">AI Routing Intelligence</h3>
+            <h3 className="font-black text-slate-800 text-sm tracking-tight">
+              AI Routing Intelligence
+            </h3>
           </div>
-          {isPanelOpen ? <ChevronUp size={16} className="text-slate-500 shrink-0" /> : <ChevronDown size={16} className="text-slate-500 shrink-0" />}
+          {isPanelOpen ? (
+            <ChevronUp size={16} className="text-slate-500 shrink-0" />
+          ) : (
+            <ChevronDown size={16} className="text-slate-500 shrink-0" />
+          )}
         </div>
 
         {isPanelOpen && (
@@ -682,43 +988,90 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
                 onClick={() => setShowMain(!showMain)}
                 className="flex items-center justify-between w-full text-xs font-bold text-slate-600 hover:text-indigo-600 transition-colors"
               >
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50" /> Main Route</span>
-                {showMain ? <Eye size={14} /> : <EyeOff size={14} className="opacity-50" />}
+                <span className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50" />{" "}
+                  Main Route
+                </span>
+                {showMain ? (
+                  <Eye size={14} />
+                ) : (
+                  <EyeOff size={14} className="opacity-50" />
+                )}
               </button>
 
               <button
                 onClick={() => setShowAlt(!showAlt)}
                 className="flex items-center justify-between w-full text-xs font-bold text-slate-600 hover:text-orange-500 transition-colors"
               >
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-orange-400 shadow-sm shadow-orange-500/50" /> Alternatives</span>
-                {showAlt ? <Eye size={14} /> : <EyeOff size={14} className="opacity-50" />}
+                <span className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-orange-400 shadow-sm shadow-orange-500/50" />{" "}
+                  Alternatives
+                </span>
+                {showAlt ? (
+                  <Eye size={14} />
+                ) : (
+                  <EyeOff size={14} className="opacity-50" />
+                )}
               </button>
 
               <button
                 onClick={() => setShowTraffic(!showTraffic)}
                 className="flex items-center justify-between w-full text-xs font-bold text-slate-600 hover:text-red-500 transition-colors"
               >
-                <span className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-400 shadow-sm shadow-red-500/50" /> City Traffic</span>
-                {showTraffic ? <Eye size={14} /> : <EyeOff size={14} className="opacity-50" />}
+                <span className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-400 shadow-sm shadow-red-500/50" />{" "}
+                  City Traffic
+                </span>
+                {showTraffic ? (
+                  <Eye size={14} />
+                ) : (
+                  <EyeOff size={14} className="opacity-50" />
+                )}
+              </button>
+
+              <button
+                onClick={cycleMapStyle}
+                className="flex items-center justify-between w-full text-xs font-bold text-slate-600 hover:text-sky-600 transition-colors"
+              >
+                <span className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-sky-400 shadow-sm shadow-sky-500/50" />{" "}
+                  Basemap
+                </span>
+                <span>{mapStyleLabel}</span>
               </button>
             </div>
 
             <div className="pt-2 border-t border-slate-200 space-y-1.5">
               <div className="flex items-start gap-2 text-[10px] text-slate-500 leading-tight">
-                <div className="w-6 h-1 mt-1 shrink-0 bg-blue-500 rounded" style={{ borderStyle: 'dashed' }} />
-                <p><strong className="text-slate-700">AI Primary Path:</strong> Fastest, lowest cost trajectory.</p>
+                <div
+                  className="w-6 h-1 mt-1 shrink-0 bg-blue-500 rounded"
+                  style={{ borderStyle: "dashed" }}
+                />
+                <p>
+                  <strong className="text-slate-700">AI Primary Path:</strong>{" "}
+                  Fastest, lowest cost trajectory.
+                </p>
               </div>
               <div className="flex items-start gap-2 text-[10px] text-slate-500 leading-tight">
                 <div className="w-6 h-1 mt-1 shrink-0 bg-yellow-500 rounded" />
-                <p><strong className="text-slate-700">Alt 1:</strong> Traffic bypass.</p>
+                <p>
+                  <strong className="text-slate-700">Alt 1:</strong> Traffic
+                  bypass.
+                </p>
               </div>
               <div className="flex items-start gap-2 text-[10px] text-slate-500 leading-tight">
                 <div className="w-6 h-1 mt-1 shrink-0 bg-orange-500 rounded" />
-                <p><strong className="text-slate-700">Alt 2:</strong> Weather/Storm bypass.</p>
+                <p>
+                  <strong className="text-slate-700">Alt 2:</strong>{" "}
+                  Weather/Storm bypass.
+                </p>
               </div>
               <div className="flex items-start gap-2 text-[10px] text-slate-500 leading-tight">
                 <div className="w-3 h-3 mt-0.5 shrink-0 bg-red-400/40 rounded-full border border-red-500" />
-                <p><strong className="text-slate-700">Traffic:</strong> City congestion zones (live API).</p>
+                <p>
+                  <strong className="text-slate-700">Traffic:</strong> City
+                  congestion zones (live API).
+                </p>
               </div>
             </div>
           </div>

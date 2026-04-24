@@ -204,6 +204,7 @@ export const transformAnalysis = (data) => {
     currentCost: cost.noActionCost ?? cost.breakdown?.baseCost ?? 800,
     potentialLoss: cost.rerouteCost ?? cost.savings ?? cost.totalImpact ?? 0,
     insights,
+    modeComparison: ai.modeComparison || null,
     alert: {
       severity: risk.level || 'Low',
       message: data.alert?.message || `Tactical ${decision.action || 'Monitoring'} protocol active.`,
@@ -312,6 +313,66 @@ export const saveDecision = async (decision) => {
     console.error('Failed to save decision:', error);
     throw error;
   }
+};
+
+/**
+ * POST /api/analyze-shipment
+ * Sends origin + destination to Gemini AI and receives a full shipment + insights.
+ */
+export const createDynamicShipment = async (origin, destination) => {
+  try {
+    const response = await api.post('/analyze-shipment', { origin, destination });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to create dynamic shipment:', error);
+    throw error;
+  }
+};
+
+/**
+ * Transform the Gemini-generated shipment into the frontend shape
+ * expected by ShipmentCard, MapView, etc.
+ */
+export const transformGeneratedShipment = (data) => {
+  if (!data?.shipment) return null;
+
+  const s = data.shipment;
+  const i = data.insights;
+  const mc = data.modeComparison;
+
+  const transformed = {
+    id: s.id,
+    name: `Shipment ${s.id}`,
+    origin: { name: s.origin.name, lat: s.origin.lat, lng: s.origin.lng },
+    destination: { name: s.destination.name, lat: s.destination.lat, lng: s.destination.lng },
+    currentLocation: { lat: s.currentLocation.lat, lng: s.currentLocation.lng },
+    status: s.status,
+    etas: s.etas,
+    riskFactors: s.riskFactors,
+    riskScore: s.riskScore,
+    currentCost: s.currentCost,
+    potentialLoss: s.potentialLoss,
+    priority: s.riskScore === 'Critical' ? 'Critical' : s.riskScore === 'High' ? 'High' : 'Medium',
+    cargoType: 'General Cargo',
+    vehicleType: 'Semi-Trailer',
+    _generated: true,
+  };
+
+  const insights = {
+    summary: i?.summary || '',
+    dominantFactor: i?.dominantFactor || '',
+    explanation: i?.explanation || '',
+    keyFactors: i?.keyFactors || ['Traffic', 'Delay', 'Cost', 'SLA'],
+    actions: (i?.actions || []).map(a => ({
+      type: a.type,
+      description: a.description,
+      tradeOff: a.tradeOff,
+      costImpact: a.costImpact,
+      recommended: Boolean(a.recommended),
+    })),
+  };
+
+  return { transformed, insights, modeComparison: mc };
 };
 
 export default api;

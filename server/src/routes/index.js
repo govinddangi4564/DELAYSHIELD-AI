@@ -6,6 +6,7 @@ import simulationRoutes from "./simulation.route.js";
 import historyRoutes from "./history.route.js";
 import riskRoutes from "./risk.route.js";
 import decisionRoutes from "./decision.route.js";
+import { generateDynamicShipment } from "../controllers/analyze.controller.js";
 
 const router = Router();
 
@@ -22,5 +23,8 @@ router.use("/simulation", simulationRoutes); // mapped to /api/simulation
 router.use("/history", historyRoutes);
 router.use("/risk", riskRoutes);
 router.use("/decision", decisionRoutes);
+
+// ─── Dynamic Shipment Generation (Gemini AI) ────────────────
+router.post("/analyze-shipment", generateDynamicShipment);
 
 export default router;

@@ -7,7 +7,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-const SYSTEM_PROMPT = `You are the DelayShield Tactical AI. Your objective is to analyze logistics telemetry and provide strategic routing decisions.
+const SYSTEM_PROMPT = `You are the DelayShield Tactical AI. Your objective is to analyze logistics telemetry and provide strategic routing decisions, including a comparison of different transport modes.
 
 You must respond ONLY with a valid JSON object matching this exact schema. Do not include markdown formatting, conversational text, or any other output.
 
@@ -23,7 +23,36 @@ You must respond ONLY with a valid JSON object matching this exact schema. Do no
       "tradeOff": "Pro/Con analysis",
       "recommended": true
     }
-  ]
+  ],
+  "modeComparison": {
+    "air": {
+      "mode": "Air",
+      "icon": "✈️",
+      "available": true,
+      "transitTime": "string",
+      "baseCost": 0,
+      "fuelSurcharge": 0,
+      "totalCost": 0,
+      "riskScore": 0,
+      "riskLevel": "string",
+      "co2Emissions": 0,
+      "reliabilityScore": 0,
+      "onTimePercent": 0,
+      "recommendedFor": "string",
+      "bestForBadge": "string",
+      "pros": ["string", "string", "string"],
+      "cons": ["string", "string", "string"]
+    },
+    "ocean": { "mode": "Ocean", "icon": "🚢", "available": true, "transitTime": "string", "baseCost": 0, "fuelSurcharge": 0, "totalCost": 0, "riskScore": 0, "riskLevel": "string", "co2Emissions": 0, "reliabilityScore": 0, "onTimePercent": 0, "recommendedFor": "string", "bestForBadge": "string", "pros": ["string", "string", "string"], "cons": ["string", "string", "string"] },
+    "road": { "mode": "Road", "icon": "🚛", "available": true, "transitTime": "string", "baseCost": 0, "fuelSurcharge": 0, "totalCost": 0, "riskScore": 0, "riskLevel": "string", "co2Emissions": 0, "reliabilityScore": 0, "onTimePercent": 0, "recommendedFor": "string", "bestForBadge": "string", "pros": ["string", "string", "string"], "cons": ["string", "string", "string"] },
+    "recommendation": {
+      "bestOverall": "string",
+      "reasoning": "string",
+      "bestForCost": "string",
+      "bestForSpeed": "string",
+      "bestForSustainability": "string"
+    }
+  }
 }`;
 
 function buildPrompt(origin, destination, risk, decision) {
@@ -111,6 +140,17 @@ function validateAIPayload(payload) {
 
   if (!Array.isArray(payload.actions) || payload.actions.length === 0) {
     throw new Error('AI payload missing required "actions" array.');
+  }
+
+  // Mode comparison validation
+  if (!payload.modeComparison) {
+    throw new Error('AI payload missing required "modeComparison" object.');
+  }
+  if (!payload.modeComparison.air || !payload.modeComparison.ocean || !payload.modeComparison.road) {
+    throw new Error('AI payload missing modes in modeComparison.');
+  }
+  if (!payload.modeComparison.recommendation) {
+    throw new Error('AI payload missing recommendation in modeComparison.');
   }
 
   for (const [i, action] of payload.actions.entries()) {

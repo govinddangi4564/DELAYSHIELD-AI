@@ -6,6 +6,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import Sidebar from './components/Sidebar';
 import SimulationPage from './pages/SimulationPage';
+import ShipmentDetailsPage from './pages/ShipmentDetailsPage';
 import { NavigationLoadingProvider } from './components/NavigationLoadingContext';
 
 function ScrollToTop() {
@@ -41,6 +42,7 @@ function App() {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/shipments" element={<ShipmentsPage />} />
+                <Route path="/shipment/:id" element={<ShipmentDetailsPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/simulation" element={<SimulationPage />} />

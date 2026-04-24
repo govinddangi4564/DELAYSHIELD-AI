@@ -8,6 +8,8 @@ import { explainDecision } from "../engine/decision/aiExplainer.js";
 import { generateAlert } from "../engine/alerts/alertEngine.js";
 import { addHistory } from "../engine/history/historyEngine.js";
 import { simulateTraffic } from "../utils/simulatetraffic.js";
+import { generateShipment } from "../engine/decision/shipmentGenerator.js";
+import { shipments } from "../data/shipment.js";
 
 export const analyzeShipment = async (req, res) => {
   try {
@@ -98,5 +100,67 @@ export const analyzeShipment = async (req, res) => {
   } catch (error) {
     console.error("[analyzeController] Critical Failure:", error.message);
     return res.status(500).json({ success: false, message: "System failure in analysis pipeline" });
+  }
+};
+
+/**
+ * POST /api/analyze-shipment
+ * Accepts { origin, destination } and uses Gemini to generate
+ * a complete shipment object + AI insights.
+ */
+export const generateDynamicShipment = async (req, res) => {
+  try {
+    const { origin, destination } = req.body;
+
+    if (!origin || !destination) {
+      return res.status(400).json({
+        success: false,
+        message: "Both 'origin' and 'destination' are required."
+      });
+    }
+
+    console.log(`[analyze-shipment] Generating shipment: ${origin} → ${destination}`);
+
+    const result = await generateShipment(origin, destination);
+
+    // Add the new shipment to the in-memory store so GET /api/shipment picks it up
+    const newShipment = result.data.shipment;
+    shipments.push({
+      id: newShipment.id,
+      origin: { name: newShipment.origin.name, lat: newShipment.origin.lat, lon: newShipment.origin.lng },
+      destination: { name: newShipment.destination.name, lat: newShipment.destination.lat, lon: newShipment.destination.lng },
+      traffic: newShipment.riskFactors.traffic,
+      weather: newShipment.riskFactors.weather,
+      delay: newShipment.riskFactors.delay,
+      priority: newShipment.riskScore === 'Critical' ? 'Critical' : newShipment.riskScore === 'High' ? 'High' : 'Medium',
+      status: newShipment.status,
+      riskScore: newShipment.riskFactors.traffic * 0.5 + newShipment.riskFactors.weather * 0.3 + newShipment.riskFactors.delay * 0.2
+    });
+
+    // Save to route history
+    try {
+      const rh = result.data.routeHistory;
+      addHistory({
+        shipmentId: newShipment.id,
+        route: rh?.route || `${origin} → ${destination}`,
+        decision: rh?.decision || 'Monitor',
+        riskScore: newShipment.riskFactors.traffic * 0.5 + newShipment.riskFactors.weather * 0.3 + newShipment.riskFactors.delay * 0.2,
+        costImpact: rh?.costImpact || '$0'
+      });
+    } catch (e) {
+      console.warn('[analyze-shipment] History save skipped:', e.message);
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.data
+    });
+
+  } catch (error) {
+    console.error("[analyze-shipment] Failure:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to generate shipment analysis"
+    });
   }
 };
