@@ -18,7 +18,7 @@ const RiskMeter = ({ riskScore, factors }) => {
   const style = getRiskStyle(riskScore);
 
   return (
-    <div className="glass-panel p-4 border-2 border-blue-200">
+    <div className="glass-panel p-4 border-2 border-blue-200 h-full flex flex-col">
       {/* Title */}
       <h2 className="text-base font-black text-blue-950 flex items-center gap-2 mb-4">
         <span className="w-1 h-5 bg-blue-600 rounded-full" />
@@ -37,7 +37,7 @@ const RiskMeter = ({ riskScore, factors }) => {
       </div>
 
       {/* Factor bars - tighter */}
-      <div className="space-y-3">
+      <div className="space-y-3 mt-auto">
         {Object.entries(factors).map(([key, value]) => (
           <div key={key}>
             <div className="flex justify-between text-[11px] mb-1">

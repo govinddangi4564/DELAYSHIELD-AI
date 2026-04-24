@@ -1,39 +1,54 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import DashboardPage from './pages/DashboardPage';
 import ShipmentsPage from './pages/ShipmentsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import Sidebar from './components/Sidebar';
 import SimulationPage from './pages/SimulationPage';
+import { NavigationLoadingProvider } from './components/NavigationLoadingContext';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [pathname]);
+
+  return null;
+}
 
 function App() {
   return (
     <BrowserRouter>
-      {/* Blue-50 base, natural scrolling shell */}
-      <div className="min-h-screen bg-blue-50 font-sans text-blue-950 flex">
-        <Sidebar />
+      <NavigationLoadingProvider>
+        <ScrollToTop />
 
-        {/* Main Content Area */}
-        <main className="flex-1 ml-0 md:ml-64 pb-20 md:pb-0 relative">
-          {/* Subtle dot grid overlay */}
-          <div
-            className="absolute inset-0 z-0 opacity-30 pointer-events-none"
-            style={{ backgroundImage: 'radial-gradient(#bfdbfe 1px, transparent 1px)', backgroundSize: '28px 28px' }}
-          />
+        {/* Blue-50 base, natural scrolling shell */}
+        <div className="min-h-screen bg-blue-50 font-sans text-blue-950 flex">
+          <Sidebar />
 
-          <div className="relative z-10 w-full h-full">
-            <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/shipments" element={<ShipmentsPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/simulation" element={<SimulationPage />} />
-            </Routes>
-          </div>
-        </main>
-      </div>
+          {/* Main Content Area */}
+          <main className="flex-1 ml-0 md:ml-64 pb-20 md:pb-0 relative">
+            {/* Subtle dot grid overlay */}
+            <div
+              className="absolute inset-0 z-0 opacity-30 pointer-events-none"
+              style={{ backgroundImage: 'radial-gradient(#bfdbfe 1px, transparent 1px)', backgroundSize: '28px 28px' }}
+            />
+
+            <div className="relative z-10 w-full h-full">
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/shipments" element={<ShipmentsPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/simulation" element={<SimulationPage />} />
+              </Routes>
+            </div>
+          </main>
+        </div>
+      </NavigationLoadingProvider>
     </BrowserRouter>
   );
 }

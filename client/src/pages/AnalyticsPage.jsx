@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { BarChart3, Loader2, RefreshCw, TrendingUp, PieChart as PieIcon, IndianRupee } from 'lucide-react';
+import { BarChart3, TrendingUp, PieChart as PieIcon } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, AreaChart, Area, Legend 
 } from 'recharts';
 import HistoryPanel from '../components/HistoryPanel';
 import { getHistory } from '../services/api';
+import LoadingState from '../components/LoadingState';
+import { useNavigationLoading } from '../components/NavigationLoadingContext';
 
 const AnalyticsPage = () => {
+  const { finishNavigation } = useNavigationLoading();
   const [historyData, setHistoryData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,6 +32,12 @@ const AnalyticsPage = () => {
   useEffect(() => {
     fetchHistory();
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      finishNavigation('/analytics');
+    }
+  }, [loading, finishNavigation]);
 
   // ── Data Processing for Charts ──
   const chartData = useMemo(() => {
@@ -71,21 +80,18 @@ const AnalyticsPage = () => {
             <p className="text-sm font-bold text-blue-500 uppercase tracking-widest mt-1">Performance & Optimization Insights</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-           <button
-            onClick={fetchHistory}
-            className="flex items-center gap-2 bg-white border border-blue-200 hover:border-blue-400 text-blue-700 px-6 py-3 rounded-2xl font-bold shadow-sm transition-all hover:shadow-md active:scale-95"
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh Intelligence
-          </button>
-        </div>
       </header>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <Loader2 size={48} className="text-blue-500 animate-spin mb-4" />
-          <p className="text-blue-600 font-black text-sm uppercase tracking-widest">Aggregating Global Node Data...</p>
-        </div>
+        <LoadingState
+          title="Aggregating global node data"
+          subtitle="Crunching historical decisions and cost trends so the analytics view loads with fresh charts."
+          steps={[
+            'Reading historical decisions',
+            'Computing trend and distribution metrics',
+            'Rendering analytics charts',
+          ]}
+        />
       ) : error ? (
         <div className="glass-panel p-12 border-2 border-red-200 text-center max-w-lg mx-auto">
           <p className="text-red-600 font-black text-lg mb-4">{error}</p>
@@ -184,7 +190,7 @@ const AnalyticsPage = () => {
               <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
               <h3 className="text-xs font-black text-blue-900/40 uppercase tracking-[0.2em]">Live Intelligence Feed</h3>
             </div>
-            <HistoryPanel historyData={historyData} />
+            <HistoryPanel historyData={historyData} loading={loading} />
           </div>
         </div>
       )}

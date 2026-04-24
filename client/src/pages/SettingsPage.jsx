@@ -1,7 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Settings } from 'lucide-react';
+import { useNavigationLoading } from '../components/NavigationLoadingContext';
 
 const SettingsPage = () => {
+  const { finishNavigation } = useNavigationLoading();
+
+  useEffect(() => {
+    finishNavigation('/settings');
+  }, [finishNavigation]);
+
   return (
     <div className="min-h-screen p-8 pt-8">
       <header className="mb-8 flex items-center gap-4">

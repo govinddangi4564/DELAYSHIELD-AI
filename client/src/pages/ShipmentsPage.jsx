@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { PackageSearch, MapPin, Truck, AlertTriangle, ArrowRight, Loader2, RefreshCw, Activity } from 'lucide-react';
+import { PackageSearch, MapPin, Truck, AlertTriangle, ArrowRight, Loader2, Activity } from 'lucide-react';
 import { getShipments, analyzeShipment, transformAnalysis } from '../services/api';
+import LoadingState from '../components/LoadingState';
+import { useNavigationLoading } from '../components/NavigationLoadingContext';
 
 const ShipmentsPage = () => {
+  const { finishNavigation } = useNavigationLoading();
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,6 +30,12 @@ const ShipmentsPage = () => {
   useEffect(() => {
     fetchShipments();
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      finishNavigation('/shipments');
+    }
+  }, [loading, finishNavigation]);
 
   const handleAnalyze = async (shipment) => {
     if (selectedId === shipment.id && analysisData) {
@@ -77,12 +86,16 @@ const ShipmentsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-8 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 size={48} className="text-blue-500 animate-spin" />
-          <p className="text-blue-600 font-bold text-sm">Loading shipments...</p>
-        </div>
-      </div>
+      <LoadingState
+        fullScreen
+        title="Loading shipments"
+        subtitle="We are preparing the shipment board and live AI drill-downs so the cards arrive ready to inspect."
+        steps={[
+          'Fetching active shipments',
+          'Matching routes and priorities',
+          'Preparing interactive analysis cards',
+        ]}
+      />
     );
   }
 
@@ -115,12 +128,6 @@ const ShipmentsPage = () => {
             </p>
           </div>
         </div>
-        <button
-          onClick={fetchShipments}
-          className="flex items-center gap-2 bg-white border border-blue-200 hover:border-blue-400 text-blue-700 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all hover:shadow-md active:scale-95"
-        >
-          <RefreshCw size={14} /> Refresh
-        </button>
       </header>
 
       {/* Shipment Cards Grid */}

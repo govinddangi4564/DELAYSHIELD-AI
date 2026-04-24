@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
+import { runSimulation as runSimulationApi } from '../services/api';
+import { useNavigationLoading } from './NavigationLoadingContext';
 
 function simulateLocally(traffic, delay, priority) {
   const priorityMultiplier = { HIGH: 1.3, MEDIUM: 1.0, LOW: 0.75 }[priority] ?? 1;
@@ -14,6 +17,7 @@ let nextScenarioId = 3;
 
 export default function SimulationPanel() {
   const navigate = useNavigate();
+  const { startNavigation } = useNavigationLoading();
   const [baseInput, setBaseInput] = useState({ traffic: 60, delay: 30, priority: 'MEDIUM' });
   const [scenarios, setScenarios] = useState([
     { id: 1, traffic: 100, delay: '' },
@@ -39,6 +43,8 @@ export default function SimulationPanel() {
   };
 
   const runSimulation = async () => {
+    if (loading) return;
+
     setLoading(true);
     setApiNote('');
 
@@ -47,19 +53,13 @@ export default function SimulationPanel() {
         ? (stressMode ? Math.round(scenario.traffic * 1.5) : scenario.traffic)
         : (stressMode ? Math.round(baseInput.traffic * 1.5) : baseInput.traffic),
       delay: scenario.delay !== '' ? scenario.delay : baseInput.delay,
+      priority: baseInput.priority,
     }));
 
     let data;
 
     try {
-      const response = await fetch('http://localhost:5000/api/simulation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseInput, scenarios: builtScenarios }),
-      });
-
-      if (!response.ok) throw new Error('Simulation API returned a non-2xx response');
-      data = await response.json();
+      data = await runSimulationApi(baseInput, builtScenarios);
     } catch {
       const original = simulateLocally(baseInput.traffic, baseInput.delay, baseInput.priority);
       const simulated = builtScenarios.map((scenario) => (
@@ -81,11 +81,10 @@ export default function SimulationPanel() {
 
       data = { original, simulated, comparison };
       setApiNote('Demo mode: /api/simulation unreachable');
-    } finally {
-      setLoading(false);
     }
 
     const scNames = ['Base', ...scenarios.map((_, index) => `S${index + 1}`)];
+    startNavigation('/simulation');
     navigate('/simulation', { state: { data, builtScenarios, scenarios, scNames } });
   };
 
@@ -216,7 +215,10 @@ export default function SimulationPanel() {
           onClick={runSimulation}
           disabled={loading}
         >
-          {loading ? 'Running...' : 'Run simulation ->'}
+          <span className="inline-flex items-center gap-2">
+            {loading && <RefreshCw size={14} className="animate-spin" />}
+            {loading ? 'Running...' : 'Run simulation ->'}
+          </span>
         </button>
         {apiNote && <span className="text-xs font-semibold text-amber-700">{apiNote}</span>}
       </div>

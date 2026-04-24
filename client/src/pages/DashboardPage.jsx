@@ -8,6 +8,8 @@ import MapView from '../components/MapView';
 import AIExplanation from '../components/AIExplanation';
 import AlertBanner from '../components/AlertBanner';
 import HistoryPanel from '../components/HistoryPanel';
+import LoadingState from '../components/LoadingState';
+import { useNavigationLoading } from '../components/NavigationLoadingContext';
 import { 
   getShipments, 
   analyzeShipment, 
@@ -16,9 +18,10 @@ import {
   getCityTraffic,
   saveDecision
 } from '../services/api';
-import { RefreshCw, Loader2, List, LayoutDashboard } from 'lucide-react';
+import { RefreshCw, List, LayoutDashboard } from 'lucide-react';
 
 const DashboardPage = () => {
+  const { finishNavigation } = useNavigationLoading();
   const [shipments, setShipments] = useState([]);
   const [selectedShipment, setSelectedShipment] = useState(null);
   const [analysis, setAnalysis] = useState(null);
@@ -37,6 +40,7 @@ const DashboardPage = () => {
   const fetchGlobalData = useCallback(async (isInitial = false) => {
     // Only show full loader if we have no data or it's the first load
     if (isInitial) setLoadingShipments(true);
+    setLoadingHistory(true);
     setError(null);
     try {
       const [shipmentData, historyData, trafficData] = await Promise.all([
@@ -57,6 +61,7 @@ const DashboardPage = () => {
       setError('Failed to load system data. Is the backend running?');
     } finally {
       setLoadingShipments(false);
+      setLoadingHistory(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Removed selectedShipment to stop infinite loop
@@ -65,6 +70,12 @@ const DashboardPage = () => {
     fetchGlobalData(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!loadingShipments) {
+      finishNavigation('/dashboard');
+    }
+  }, [loadingShipments, finishNavigation]);
 
   // ── Auto-analyze when selected shipment changes ──
   useEffect(() => {
@@ -151,7 +162,11 @@ const DashboardPage = () => {
     
     // 3. Refresh history after a short delay
     setTimeout(() => {
-      getHistory().then(setHistory).catch(console.error);
+      setLoadingHistory(true);
+      getHistory()
+        .then(setHistory)
+        .catch(console.error)
+        .finally(() => setLoadingHistory(false));
     }, 1000);
   };
 
@@ -174,12 +189,16 @@ const DashboardPage = () => {
 
   if (loadingShipments) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 size={48} className="text-blue-500 animate-spin" />
-          <p className="text-blue-600 font-bold text-sm">DelayShield Intelligence Booting...</p>
-        </div>
-      </div>
+      <LoadingState
+        fullScreen
+        title="DelayShield intelligence booting"
+        subtitle="We are pulling in shipments, history, traffic overlays, and route context so the dashboard opens with live data."
+        steps={[
+          'Connecting to logistics services',
+          'Collecting shipment and history feeds',
+          'Rendering live route intelligence',
+        ]}
+      />
     );
   }
 
@@ -264,8 +283,8 @@ const DashboardPage = () => {
           </div>
 
           {/* History Panel */}
-          <div className="flex flex-col">
-            <HistoryPanel historyData={history} />
+          <div className="flex flex-col lg:h-[600px]">
+            <HistoryPanel historyData={history} loading={loadingHistory} />
           </div>
         </div>
 
@@ -273,7 +292,7 @@ const DashboardPage = () => {
         <div className="lg:col-span-8 flex flex-col gap-8">
           
           {/* Visualization Layer */}
-          <div>
+          <div className="flex flex-col gap-8">
             <h2 className="text-xs font-black text-blue-900/40 uppercase tracking-widest mb-4 flex items-center gap-2">
               <span className="w-4 h-px bg-blue-200" /> AI Intelligent Routing
             </h2>
@@ -284,6 +303,24 @@ const DashboardPage = () => {
                 cityTrafficData={cityTraffic}
               />
             </div>
+
+            {loadingAnalysis ? (
+              <LoadingState
+                compact
+                title="Running AI diagnostics"
+                subtitle="Comparing route risk, cost impact, and contingency options for the selected shipment."
+                steps={[
+                  'Scoring live traffic and delay signals',
+                  'Estimating financial exposure',
+                  'Preparing risk and cost cards',
+                ]}
+              />
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch lg:h-[384px]">
+                <RiskMeter riskScore={riskScore} factors={riskFactors} />
+                <CostAnalysis currentCost={currentCost} potentialLoss={potentialLoss} />
+              </div>
+            )}
           </div>
 
         </div>
@@ -311,25 +348,8 @@ const DashboardPage = () => {
       </section>
 
       {/* Simulation Workspace */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <div className="lg:col-span-8">
-          <SimulationPanel />
-        </div>
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          {loadingAnalysis ? (
-            <div className="glass-panel p-10 flex flex-col items-center justify-center min-h-[260px]">
-              <Loader2 size={28} className="text-blue-500 animate-spin mb-4" />
-              <p className="text-blue-500 font-bold text-xs uppercase tracking-widest">
-                Running AI diagnostics...
-              </p>
-            </div>
-          ) : (
-            <>
-              <RiskMeter riskScore={riskScore} factors={riskFactors} />
-              <CostAnalysis currentCost={currentCost} potentialLoss={potentialLoss} />
-            </>
-          )}
-        </div>
+      <section>
+        <SimulationPanel />
       </section>
 
       </div>

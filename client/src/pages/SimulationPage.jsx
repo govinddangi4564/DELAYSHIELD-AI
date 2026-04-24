@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Chart } from 'chart.js';
+import { useNavigationLoading } from '../components/NavigationLoadingContext';
 import {
   CategoryScale,
   LinearScale,
@@ -126,11 +127,16 @@ function normalizeScenarioNames(names, count) {
 
 export default function SimulationPage() {
   const location = useLocation();
+  const { finishNavigation } = useNavigationLoading();
   const state = location.state;
+
+  useEffect(() => {
+    finishNavigation('/simulation');
+  }, [finishNavigation]);
 
   if (!state || !state.data) {
     return (
-      <div className="max-w-[720px] mx-auto py-16 text-center text-slate-500">
+      <div className="max-w-[960px] mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center text-slate-500">
         No simulation data available. Please run a simulation from the dashboard.
       </div>
     );
@@ -141,7 +147,7 @@ export default function SimulationPage() {
 
   if (!normalizedData) {
     return (
-      <div className="max-w-[720px] mx-auto py-16 text-center text-slate-500">
+      <div className="max-w-[960px] mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center text-slate-500">
         Simulation results could not be displayed. Please run the simulation again.
       </div>
     );
@@ -150,7 +156,7 @@ export default function SimulationPage() {
   const normalizedNames = normalizeScenarioNames(scNames, normalizedData.simulated.length);
 
   return (
-    <div className="max-w-[720px] py-4 md:py-6 mx-auto w-full px-2 sm:px-0">
+    <div className="max-w-[1400px] py-4 md:py-6 mx-auto w-full px-4 sm:px-6 lg:px-10">
       <div className="flex items-start justify-between mb-7 gap-4">
         <div>
           <h2 className="text-xl font-bold text-blue-950 m-0">Simulation Results</h2>
