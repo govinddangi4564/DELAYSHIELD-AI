@@ -1,8 +1,12 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Network, LayoutDashboard, PackageSearch, BarChart3, Settings } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { LayoutDashboard, PackageSearch, BarChart3, Settings, RefreshCw } from 'lucide-react';
+import { useNavigationLoading } from './NavigationLoadingContext';
 
 const Sidebar = () => {
+  const location = useLocation();
+  const { pendingPath, startNavigation } = useNavigationLoading();
+
   const links = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/shipments', icon: PackageSearch, label: 'Shipments' },
@@ -29,6 +33,11 @@ const Sidebar = () => {
           <NavLink
             key={link.to}
             to={link.to}
+            onClick={() => {
+              if (location.pathname !== link.to) {
+                startNavigation(link.to);
+              }
+            }}
             className={({ isActive }) => `
               flex flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-3 p-2 md:px-4 md:py-3 rounded-xl font-semibold transition-all duration-200
               ${isActive
@@ -36,7 +45,11 @@ const Sidebar = () => {
                 : 'text-blue-200 hover:bg-blue-800 hover:text-white'}
             `}
           >
-            <link.icon className="w-5 h-5 md:w-6 md:h-6" />
+            {pendingPath === link.to ? (
+              <RefreshCw className="w-5 h-5 md:w-6 md:h-6 animate-spin" />
+            ) : (
+              <link.icon className="w-5 h-5 md:w-6 md:h-6" />
+            )}
             <span className="text-[10px] md:text-sm">{link.label}</span>
           </NavLink>
         ))}

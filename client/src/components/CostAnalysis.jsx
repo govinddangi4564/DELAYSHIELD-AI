@@ -3,7 +3,7 @@ import { DollarSign, TrendingDown, AlertTriangle } from 'lucide-react';
 
 const CostAnalysis = ({ currentCost, potentialLoss }) => {
   return (
-    <div className="glass-panel p-6 border-2 border-blue-200">
+    <div className="glass-panel p-6 border-2 border-blue-200 h-full flex flex-col">
       {/* Title */}
       <div className="flex items-center gap-2 mb-6">
         <div className="p-2 bg-blue-600 rounded-lg text-white shadow-sm shadow-blue-300">
@@ -29,7 +29,7 @@ const CostAnalysis = ({ currentCost, potentialLoss }) => {
       </div>
 
       {/* Total */}
-      <div className="pt-4 border-t-2 border-blue-100 flex justify-between items-center bg-blue-600 rounded-xl px-4 py-3 shadow-md shadow-blue-300">
+      <div className="pt-4 mt-auto border-t-2 border-blue-100 flex justify-between items-center bg-blue-600 rounded-xl px-4 py-3 shadow-md shadow-blue-300">
         <span className="text-sm font-bold text-blue-100 flex items-center gap-1">
           <TrendingDown size={16} /> Projected Total
         </span>

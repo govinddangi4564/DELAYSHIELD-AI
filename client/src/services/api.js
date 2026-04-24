@@ -283,8 +283,7 @@ export const runSimulation = async (baseInput, scenarios) => {
       baseInput,
       scenarios,
     });
-    const results = response.data?.data || response.data || [];
-    return results.map((r, i) => transformSimulationResult(r, i));
+    return response.data;
   } catch (error) {
     console.error('Failed to run simulation:', error);
     throw error;
