@@ -109,6 +109,17 @@ export const transformShipment = (s) => {
     priority: s.priority || 'Medium',
     cargoType: s.cargoType || 'General Cargo',
     vehicleType: s.vehicleType || 'Semi-Trailer',
+    deliveryStatus: delay > 60 ? 'Delivered (Delayed)' : delay > 0 ? 'Delayed' : 'On Time',
+    lossImpact: {
+      fuelLoss: Math.round(delay * 25),
+      penaltyRisk: delay > 30 ? Math.round((delay / 60) * 8000) : 0,
+      totalLoss: Math.round(delay * 25) + (delay > 30 ? Math.round((delay / 60) * 8000) : 0)
+    },
+    carbonImpact: {
+      totalCO2: s.carbonImpact?.totalCO2 ?? Math.round(80 + (delay * 0.15)),
+      ecoBadge: s.carbonImpact?.ecoBadge ?? (delay > 40 ? 'High Emission' : delay > 15 ? 'Moderate' : 'Eco Friendly'),
+      emissionSaved: s.carbonImpact?.emissionSaved ?? Math.round(delay * 0.2)
+    },
     _raw: s,
   }
 }

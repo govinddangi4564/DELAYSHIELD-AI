@@ -208,7 +208,11 @@ const ShipmentDetailsPage = () => {
             </div>
             <div className="lg:col-span-4 flex flex-col gap-6">
               <RiskMeter riskScore={riskScore} factors={riskFactors} />
-              <CostAnalysis currentCost={currentCost} potentialLoss={potentialLoss} />
+              <CostAnalysis 
+                currentCost={currentCost} 
+                potentialLoss={potentialLoss} 
+                lossImpact={analysis?.lossImpact || shipment?.lossImpact}
+              />
             </div>
           </div>
         )}

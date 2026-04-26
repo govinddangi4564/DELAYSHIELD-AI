@@ -13,7 +13,7 @@ import {
   createDynamicShipment,
   transformGeneratedShipment
 } from '../services/api';
-import { RefreshCw, List, LayoutDashboard } from 'lucide-react';
+import { RefreshCw, List, LayoutDashboard, TrendingUp } from 'lucide-react';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -183,6 +183,51 @@ const DashboardPage = () => {
 
         {/* ── Quick AI Shipment Generator ── */}
         <QuickAnalysisForm onAnalyze={handleGenerateShipment} isLoading={loadingGenerate} />
+
+        {/* ── Sustainability Summary Stats ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className="glass-panel p-6 border-l-8 border-l-emerald-500 flex items-center justify-between group">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total CO₂ Emission</p>
+              <h3 className="text-3xl font-black text-slate-900">
+                {shipments.reduce((sum, s) => sum + (s.carbonImpact?.totalCO2 || 0), 0).toLocaleString()} kg
+              </h3>
+              <p className="text-xs font-bold text-slate-500 mt-1">Fleet footprint today</p>
+            </div>
+            <div className="p-4 bg-emerald-50 rounded-2xl text-emerald-600 group-hover:scale-110 transition-transform">
+              <TrendingUp size={28} />
+            </div>
+          </div>
+
+          <div className="glass-panel p-6 border-l-8 border-l-blue-500 flex items-center justify-between group">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Emission Saved</p>
+              <h3 className="text-3xl font-black text-slate-900 text-blue-600">
+                {shipments.reduce((sum, s) => sum + (s.carbonImpact?.emissionSaved || 0), 0).toLocaleString()} kg
+              </h3>
+              <p className="text-xs font-bold text-blue-500 mt-1">Optimization efficiency</p>
+            </div>
+            <div className="p-4 bg-blue-50 rounded-2xl text-blue-600 group-hover:scale-110 transition-transform">
+              <RefreshCw size={28} />
+            </div>
+          </div>
+
+          <div className="glass-panel p-6 border-l-8 border-l-indigo-600 flex items-center justify-between group bg-slate-900">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Eco Routes Active</p>
+              <h3 className="text-3xl font-black text-white">
+                {shipments.filter(s => s.carbonImpact?.ecoBadge === 'Eco Friendly').length}
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <p className="text-xs font-bold text-emerald-400">🌱 Sustainability First</p>
+              </div>
+            </div>
+            <div className="p-4 bg-white/5 rounded-2xl text-white group-hover:rotate-12 transition-transform">
+              <LayoutDashboard size={28} />
+            </div>
+          </div>
+        </div>
 
         {/* ── Main Layout Grid ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8">

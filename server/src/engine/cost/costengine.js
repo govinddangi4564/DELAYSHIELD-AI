@@ -167,3 +167,55 @@ export const calculateCostImpact = ({
     breakdown,
   };
 };
+
+/**
+ * Real-time Loss Impact Engine
+ * Calculates financial loss based on delay metrics.
+ */
+export const calculateLossImpact = (delay = 0) => {
+  const FUEL_RATE_PER_MINUTE = 25; // ₹25 per minute of idling/delay
+  const PENALTY_PER_HOUR = 8000;   // ₹8000 penalty for commercial delay
+
+  const normalizedDelay = Math.max(0, delay);
+  const fuelLoss = normalizedDelay * FUEL_RATE_PER_MINUTE;
+  const penalty = normalizedDelay > 30 ? (normalizedDelay / 60) * PENALTY_PER_HOUR : 0;
+  const totalLoss = fuelLoss + penalty;
+
+  return {
+    fuelLoss: Math.round(fuelLoss),
+    penaltyRisk: Math.round(penalty),
+    totalLoss: Math.round(totalLoss),
+    delayMinutes: normalizedDelay,
+    severity: totalLoss > 15000 ? 'High' : totalLoss > 5000 ? 'Medium' : 'Low'
+  };
+};
+
+/**
+ * Sustainability & Carbon Emission Engine
+ * Tracks CO2 footprint and eco-efficiency.
+ */
+export const calculateCarbonImpact = ({ distanceMeters = 0, delayMinutes = 0 } = {}) => {
+  const CO2_KG_PER_KM = 0.95; // Average for heavy trucks
+  const IDLE_CO2_PER_MIN = 0.15; // CO2 emission while idling per min
+
+  const distanceKm = distanceMeters / 1000;
+  const transitEmission = distanceKm * CO2_KG_PER_KM;
+  const delayEmission = delayMinutes * IDLE_CO2_PER_MIN;
+  
+  const totalEmission = transitEmission + delayEmission;
+  
+  // Eco rating logic
+  let ecoBadge = 'Moderate';
+  if (totalEmission < 150) ecoBadge = 'Eco Friendly';
+  else if (totalEmission > 400) ecoBadge = 'High Emission';
+
+  return {
+    totalCO2: Math.round(totalEmission),
+    transitEmission: Math.round(transitEmission),
+    delayEmission: Math.round(delayEmission),
+    ecoBadge,
+    emissionSaved: Math.round(totalEmission * 0.15), // Potential savings if eco-route used
+    sustainabilityScore: Math.max(0, 100 - (totalEmission / 10)),
+    carbonCost: Math.round(totalEmission * 2.5) // ₹2.5 per kg of CO2 offset
+  };
+};

@@ -2,7 +2,7 @@ import { calculateRisk } from '../engine/risk/riskengine.js'
 import { makeDecision } from '../engine/decision/decisionengine.js'
 import { getWeatherData } from '../integrations/weather.api.js'
 import { getRoute } from '../integrations/route.api.js'
-import { calculateCostImpact } from '../engine/cost/costengine.js'
+import { calculateCostImpact, calculateLossImpact, calculateCarbonImpact } from '../engine/cost/costengine.js'
 import { generateAIPlan } from '../engine/decision/aiplanner.js'
 import { explainDecision } from '../engine/decision/aiExplainer.js'
 import { generateAlert } from '../engine/alerts/alertEngine.js'
@@ -63,6 +63,11 @@ export const analyzeShipment = async (req, res) => {
       riskLevel: riskResult.level,
       routeData
     })
+    const lossImpact = calculateLossImpact(delay || 0)
+    const carbonImpact = calculateCarbonImpact({ 
+      distanceMeters: routeData.distance || 0, 
+      delayMinutes: delay || 0 
+    })
 
     const aiResult = await generateAIPlan({
       risk: { ...riskResult, traffic: finalTraffic, delay },
@@ -86,13 +91,17 @@ export const analyzeShipment = async (req, res) => {
     const aiHighways = aiResult.data?.identifiedHighways || []
 
     try {
+      const formattedImpact = costResult.savings !== null 
+        ? `${costResult.savings >= 0 ? '+' : ''}INR ${Math.abs(costResult.savings).toLocaleString()}`
+        : 'INR 0'
+
       addHistory({
         shipmentId: safeShipmentId,
         userId: req.user.id,
         route: aiHighways[0] || routeData.majorRoads[0],
         decision: decisionResult.action,
         riskScore: riskResult.score,
-        costImpact: costResult.totalImpact || 0
+        costImpact: formattedImpact
       })
     } catch {}
 
@@ -102,6 +111,8 @@ export const analyzeShipment = async (req, res) => {
       risk: riskResult,
       decision: decisionResult,
       cost: costResult,
+      lossImpact: lossImpact,
+      carbonImpact: carbonImpact,
       weather: weatherData,
       route: {
         ...routeData,
@@ -150,13 +161,18 @@ export const generateDynamicShipment = async (req, res) => {
 
     try {
       const rh = result.data.routeHistory
+      let impact = rh?.costImpact || 'INR 0'
+      if (typeof impact === 'number') {
+        impact = `${impact >= 0 ? '+' : ''}INR ${Math.abs(impact).toLocaleString()}`
+      }
+
       addHistory({
         shipmentId: newShipment.id,
         userId: req.user.id,
         route: rh?.route || `${origin} -> ${destination}`,
         decision: rh?.decision || 'Monitor',
         riskScore: newShipment.riskFactors.traffic * 0.5 + newShipment.riskFactors.weather * 0.3 + newShipment.riskFactors.delay * 0.2,
-        costImpact: rh?.costImpact || '$0'
+        costImpact: impact
       })
     } catch (e) {
       console.warn('[analyze-shipment] History save skipped:', e.message)

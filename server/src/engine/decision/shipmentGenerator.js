@@ -57,7 +57,7 @@ The JSON must have this EXACT structure:
     "route": "Origin → Destination via Highway",
     "decision": "Reroute",
     "riskLevel": "High",
-    "costImpact": "+$XXX"
+    "costImpact": "+INR XXX"
   },
   "modeComparison": {
     "air": {
@@ -97,11 +97,11 @@ RULES:
 4. "status" must be one of: "In Transit", "Delayed", "On Time", "High Risk", "Monitoring".
 5. "riskFactors" values must be integers 0-100 representing percentage scores.
 6. "riskScore" must be one of: "Low", "Medium", "High", "Critical" — based on the riskFactors.
-7. "currentCost" is the current shipping cost in USD (realistic, typically $500-$5000).
-8. "potentialLoss" is the potential financial loss if things go wrong (in USD).
+7. "currentCost" is the current shipping cost in INR (realistic, typically 40000-400000).
+8. "potentialLoss" is the potential financial loss if things go wrong (in INR).
 9. ETAs must use realistic timezone abbreviations (EST, CST, PST, IST, etc.).
 10. "actions" must contain exactly 2 action objects. The "type" must be one of: "Reroute", "Monitor", "Delay", "Continue". Exactly one must have "recommended": true.
-11. "costImpact" should be formatted like "+ $180" or "- $0" or "+ $95".
+11. "costImpact" should be formatted like "+ INR 180" or "- INR 0" or "+ INR 95".
 12. "keyFactors" must be an array of exactly 4 short tags like ["Traffic", "Delay", "SLA", "Cost"].
 13. "explanation" should be 2-3 sentences explaining the AI's analysis reasoning.
 14. "routeHistory.decision" must be one of: "Reroute", "Monitor", "Delay", "Continue".

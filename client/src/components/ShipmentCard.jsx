@@ -63,6 +63,20 @@ const ShipmentCard = ({ shipment, isSelected, onClick }) => {
             <span className="text-[10px] text-blue-500 font-medium">ETA: {shipment.etas.original}</span>
           </div>
         </div>
+
+        {/* Sustainability Data */}
+        <div className="flex items-center justify-between pt-2 border-t border-blue-100/50">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">🌱</span>
+            <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${
+              shipment.carbonImpact?.ecoBadge === 'Eco Friendly' ? 'bg-emerald-100 text-emerald-700' :
+              shipment.carbonImpact?.ecoBadge === 'Moderate' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+            }`}>
+              {shipment.carbonImpact?.ecoBadge || 'Moderate'}
+            </span>
+          </div>
+          <span className="text-xs font-black text-slate-700">{shipment.carbonImpact?.totalCO2 || 0} kg CO₂</span>
+        </div>
       </div>
     </div>
   );

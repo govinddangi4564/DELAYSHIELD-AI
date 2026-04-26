@@ -6,8 +6,10 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import SettingsPage from './pages/SettingsPage'
 import Sidebar from './components/Sidebar'
 import SimulationPage from './pages/SimulationPage'
+import PriorityMapPage from './pages/PriorityMapPage'
 import ShipmentDetailsPage from './pages/ShipmentDetailsPage'
 import LoginPage from './pages/LoginPage'
+import LossImpactPage from './pages/LossImpactPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import { NavigationLoadingProvider } from './components/NavigationLoadingContext'
 import { useAuth } from './auth/AuthContext'
@@ -46,7 +48,9 @@ function AppShell() {
             <Route path="/shipment/:id" element={<ProtectedRoute><ShipmentDetailsPage /></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/priority-map" element={<ProtectedRoute><PriorityMapPage /></ProtectedRoute>} />
             <Route path="/simulation" element={<ProtectedRoute><SimulationPage /></ProtectedRoute>} />
+            <Route path="/loss-engine" element={<ProtectedRoute><LossImpactPage /></ProtectedRoute>} />
           </Routes>
         </div>
       </main>
