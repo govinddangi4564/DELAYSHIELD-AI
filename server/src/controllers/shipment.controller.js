@@ -1,7 +1,8 @@
 import {
   createShipmentForUser,
   getShipmentByIdForUser,
-  getShipmentsByUserId
+  getShipmentsByUserId,
+  getShipmentByIdPublic
 } from '../repositories/shipment.repository.js'
 
 function transformStoredShipment(shipment) {
@@ -72,6 +73,31 @@ export const getShipmentById = async (req, res) => {
     })
   } catch (error) {
     console.error('Shipment error:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    })
+  }
+}
+
+export const getPublicShipment = async (req, res) => {
+  try {
+    const { id } = req.params
+    const shipment = await getShipmentByIdPublic(id)
+
+    if (!shipment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Shipment not found'
+      })
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: transformStoredShipment(shipment)
+    })
+  } catch (error) {
+    console.error('Public shipment error:', error)
     return res.status(500).json({
       success: false,
       message: 'Internal server error'

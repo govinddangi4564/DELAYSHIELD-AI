@@ -315,6 +315,12 @@ export const createShipment = async (payload) => {
   return response.data
 }
 
+export const getPublicShipment = async (id) => {
+  const response = await api.get(`/shipment/shared/${id}`)
+  const s = response.data?.data || response.data
+  return transformShipment(s)
+}
+
 export const analyzeShipment = async (payload) => {
   const response = await api.post('/analyze', payload)
   return response.data

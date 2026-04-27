@@ -10,6 +10,7 @@ import PriorityMapPage from './pages/PriorityMapPage'
 import ShipmentDetailsPage from './pages/ShipmentDetailsPage'
 import LoginPage from './pages/LoginPage'
 import LossImpactPage from './pages/LossImpactPage'
+import SharedRoutePage from './pages/SharedRoutePage'
 import ProtectedRoute from './components/ProtectedRoute'
 import { NavigationLoadingProvider } from './components/NavigationLoadingContext'
 import { useAuth } from './auth/AuthContext'
@@ -27,7 +28,9 @@ function ScrollToTop() {
 function AppShell() {
   const location = useLocation()
   const { isAuthenticated } = useAuth()
-  const showSidebar = isAuthenticated && location.pathname !== '/login'
+  const showSidebar = isAuthenticated && 
+    location.pathname !== '/login' && 
+    !location.pathname.startsWith('/share/')
 
   return (
     <div className="min-h-screen bg-blue-50 font-sans text-blue-950 flex">
@@ -46,6 +49,7 @@ function AppShell() {
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/shipments" element={<ProtectedRoute><ShipmentsPage /></ProtectedRoute>} />
             <Route path="/shipment/:id" element={<ProtectedRoute><ShipmentDetailsPage /></ProtectedRoute>} />
+            <Route path="/share/:id" element={<SharedRoutePage />} />
             <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             <Route path="/priority-map" element={<ProtectedRoute><PriorityMapPage /></ProtectedRoute>} />
