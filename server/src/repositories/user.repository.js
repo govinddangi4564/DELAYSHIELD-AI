@@ -57,8 +57,10 @@ export async function upsertGoogleUser({ googleId, email, name }) {
 }
 
 export async function createLocalUser({ email, name, passwordHash }) {
+  const normalizedEmail = String(email).toLowerCase()
   const created = await User.create({
-    email: String(email).toLowerCase(),
+    googleId: `local:${normalizedEmail}`,
+    email: normalizedEmail,
     name,
     passwordHash,
     authProviders: ['local'],

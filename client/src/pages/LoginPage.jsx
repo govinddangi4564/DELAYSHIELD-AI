@@ -1,146 +1,172 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import React, { useEffect, useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { KeyRound, ShieldCheck, Route, Truck, UserPlus } from 'lucide-react'
-import { useAuth } from '../auth/AuthContext'
+import React, { useEffect, useRef, useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { KeyRound, ShieldCheck, Route, Truck, UserPlus } from "lucide-react";
+import { useAuth } from "../auth/AuthContext";
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
-const GOOGLE_GIS_SRC = 'https://accounts.google.com/gsi/client'
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const GOOGLE_GIS_SRC = "https://accounts.google.com/gsi/client";
 
 function loadGoogleIdentityScript() {
   return new Promise((resolve, reject) => {
     if (window.google?.accounts?.id) {
-      resolve('already-loaded')
-      return
+      resolve("already-loaded");
+      return;
     }
 
-    const existing = document.querySelector(`script[src="${GOOGLE_GIS_SRC}"]`)
+    const existing = document.querySelector(`script[src="${GOOGLE_GIS_SRC}"]`);
 
     if (existing) {
-      existing.addEventListener('load', () => resolve('loaded'))
-      existing.addEventListener('error', () => reject(new Error('Google Identity Services script was blocked or failed to load.')))
-      return
+      existing.addEventListener("load", () => resolve("loaded"));
+      existing.addEventListener("error", () =>
+        reject(
+          new Error(
+            "Google Identity Services script was blocked or failed to load.",
+          ),
+        ),
+      );
+      return;
     }
 
-    const script = document.createElement('script')
-    script.src = GOOGLE_GIS_SRC
-    script.async = true
-    script.defer = true
-    script.onload = () => resolve('loaded')
-    script.onerror = () => reject(new Error('Google Identity Services script was blocked or failed to load.'))
-    document.head.appendChild(script)
-  })
+    const script = document.createElement("script");
+    script.src = GOOGLE_GIS_SRC;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve("loaded");
+    script.onerror = () =>
+      reject(
+        new Error(
+          "Google Identity Services script was blocked or failed to load.",
+        ),
+      );
+    document.head.appendChild(script);
+  });
 }
 
 const emptyManualForm = {
-  name: '',
-  email: '',
-  password: ''
-}
+  name: "",
+  email: "",
+  password: "",
+};
 
 const LoginPage = () => {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { isAuthenticated, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth()
-  const [error, setError] = useState('')
-  const [booting, setBooting] = useState(true)
-  const [tab, setTab] = useState('signin')
-  const [form, setForm] = useState(emptyManualForm)
-  const [submitting, setSubmitting] = useState(false)
+  const navigate = useNavigate();
+  const location = useLocation();
+  const {
+    isAuthenticated,
+    signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
+  } = useAuth();
+  const [error, setError] = useState("");
+  const [booting, setBooting] = useState(true);
+  const [tab, setTab] = useState("signin");
+  const [form, setForm] = useState(emptyManualForm);
+  const [submitting, setSubmitting] = useState(false);
 
-  const [googleReady, setGoogleReady] = useState(false)
+  const [googleReady, setGoogleReady] = useState(false);
+  const googleButtonRef = useRef(null);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     if (!GOOGLE_CLIENT_ID) {
-      setBooting(false)
-      return
+      setBooting(false);
+      return;
     }
 
     const initGoogle = async () => {
       try {
-        await loadGoogleIdentityScript()
+        await loadGoogleIdentityScript();
       } catch (scriptError) {
         if (!cancelled) {
-          setError(scriptError.message)
-          setBooting(false)
+          setError(scriptError.message);
+          setBooting(false);
         }
-        return
+        return;
       }
 
-      if (cancelled) return
+      if (cancelled) return;
 
       if (!window.google?.accounts?.id) {
-        setError('Google Identity Services loaded, but the sign-in API was not available in the browser.')
-        setBooting(false)
-        return
+        setError(
+          "Google Identity Services loaded, but the sign-in API was not available in the browser.",
+        );
+        setBooting(false);
+        return;
       }
 
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: async (response) => {
           try {
-            setError('')
-            await signInWithGoogle(response.credential)
-            const nextPath = location.state?.from || '/dashboard'
-            navigate(nextPath, { replace: true })
+            setError("");
+            await signInWithGoogle(response.credential);
+            const nextPath = location.state?.from || "/dashboard";
+            navigate(nextPath, { replace: true });
           } catch (loginError) {
-            setError(loginError?.response?.data?.message || 'Google sign-in failed.')
+            setError(
+              loginError?.response?.data?.message || "Google sign-in failed.",
+            );
           }
-        }
-      })
+        },
+      });
 
-      setGoogleReady(true)
-      setBooting(false)
-    }
+      setGoogleReady(true);
+      setBooting(false);
+    };
 
-    initGoogle()
+    initGoogle();
 
     return () => {
-      cancelled = true
-    }
-  }, [location.state?.from, navigate, signInWithGoogle])
+      cancelled = true;
+    };
+  }, [location.state?.from, navigate, signInWithGoogle]);
 
-  const handleGoogleClick = () => {
-    if (!window.google?.accounts?.id) {
-      setError('Google sign-in is not available. Please try the manual login.')
-      return
-    }
-    window.google.accounts.id.prompt((notification) => {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        // Fallback: render a One Tap popup or show error
-        setError('Google popup was blocked. Please allow popups or use manual login.')
-      }
-    })
-  }
+  useEffect(() => {
+    if (
+      !googleReady ||
+      !googleButtonRef.current ||
+      !window.google?.accounts?.id
+    )
+      return;
+
+    googleButtonRef.current.innerHTML = "";
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      theme: "outline",
+      size: "large",
+      shape: "pill",
+      text: tab === "signup" ? "signup_with" : "signin_with",
+      width: 360,
+    });
+  }, [googleReady, tab]);
 
   const handleManualSubmit = async (event) => {
-    event.preventDefault()
-    setSubmitting(true)
-    setError('')
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
 
     try {
-      if (tab === 'signup') {
-        await signUpWithEmail(form)
+      if (tab === "signup") {
+        await signUpWithEmail(form);
       } else {
         await signInWithEmail({
           email: form.email,
-          password: form.password
-        })
+          password: form.password,
+        });
       }
 
-      const nextPath = location.state?.from || '/dashboard'
-      navigate(nextPath, { replace: true })
+      const nextPath = location.state?.from || "/dashboard";
+      navigate(nextPath, { replace: true });
     } catch (authError) {
-      setError(authError?.response?.data?.message || 'Authentication failed.')
+      setError(authError?.response?.data?.message || "Authentication failed.");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (
@@ -157,19 +183,39 @@ const LoginPage = () => {
           </h1>
 
           <p className="mt-5 max-w-lg text-base font-medium leading-7 text-slate-600">
-            Sign in with Google, or use the manual admin fallback when GIS is blocked.
+            Sign in with Google, or use the manual admin fallback when GIS is
+            blocked.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {[
-              { icon: Truck, title: 'Owned Shipments', copy: 'Every shipment is tied to the authenticated admin account.' },
-              { icon: Route, title: 'Protected Routing', copy: 'AI route analysis only runs inside a verified backend session.' },
-              { icon: ShieldCheck, title: 'Backend Verified', copy: 'JWT sessions are always issued by the backend, never by the browser.' },
+              {
+                icon: Truck,
+                title: "Owned Shipments",
+                copy: "Every shipment is tied to the authenticated admin account.",
+              },
+              {
+                icon: Route,
+                title: "Protected Routing",
+                copy: "AI route analysis only runs inside a verified backend session.",
+              },
+              {
+                icon: ShieldCheck,
+                title: "Backend Verified",
+                copy: "JWT sessions are always issued by the backend, never by the browser.",
+              },
             ].map((item) => (
-              <div key={item.title} className="rounded-3xl border border-white/70 bg-white/70 p-5 shadow-lg shadow-sky-100 backdrop-blur">
+              <div
+                key={item.title}
+                className="rounded-3xl border border-white/70 bg-white/70 p-5 shadow-lg shadow-sky-100 backdrop-blur"
+              >
                 <item.icon className="text-sky-600" size={22} />
-                <h2 className="mt-4 text-sm font-black uppercase tracking-[0.2em] text-slate-800">{item.title}</h2>
-                <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{item.copy}</p>
+                <h2 className="mt-4 text-sm font-black uppercase tracking-[0.2em] text-slate-800">
+                  {item.title}
+                </h2>
+                <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
+                  {item.copy}
+                </p>
               </div>
             ))}
           </div>
@@ -179,8 +225,8 @@ const LoginPage = () => {
           <div className="flex rounded-2xl bg-sky-50 p-1">
             <button
               type="button"
-              onClick={() => setTab('signin')}
-              className={`flex-1 rounded-2xl px-4 py-3 text-sm font-black transition ${tab === 'signin' ? 'bg-white text-sky-700 shadow' : 'text-slate-500'}`}
+              onClick={() => setTab("signin")}
+              className={`flex-1 rounded-2xl px-4 py-3 text-sm font-black transition ${tab === "signin" ? "bg-white text-sky-700 shadow" : "text-slate-500"}`}
             >
               <span className="inline-flex items-center gap-2">
                 <KeyRound size={16} />
@@ -189,8 +235,8 @@ const LoginPage = () => {
             </button>
             <button
               type="button"
-              onClick={() => setTab('signup')}
-              className={`flex-1 rounded-2xl px-4 py-3 text-sm font-black transition ${tab === 'signup' ? 'bg-white text-sky-700 shadow' : 'text-slate-500'}`}
+              onClick={() => setTab("signup")}
+              className={`flex-1 rounded-2xl px-4 py-3 text-sm font-black transition ${tab === "signup" ? "bg-white text-sky-700 shadow" : "text-slate-500"}`}
             >
               <span className="inline-flex items-center gap-2">
                 <UserPlus size={16} />
@@ -199,31 +245,28 @@ const LoginPage = () => {
             </button>
           </div>
 
-          <p className="mt-6 text-sm font-black uppercase tracking-[0.24em] text-sky-600">Admin Access</p>
+          <p className="mt-6 text-sm font-black uppercase tracking-[0.24em] text-sky-600">
+            Admin Access
+          </p>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
-            {tab === 'signup' ? 'Create fallback credentials' : 'Open the operations console'}
+            {tab === "signup"
+              ? "Create fallback credentials"
+              : "Open the operations console"}
           </h2>
           <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
-            {tab === 'signup'
-              ? 'Create a manual admin login with an allowlisted email.'
-              : 'Use Google or your manual admin credentials.'}
+            {tab === "signup"
+              ? "Create a manual admin login with an allowlisted email."
+              : "Use Google or your manual admin credentials."}
           </p>
 
           {GOOGLE_CLIENT_ID ? (
             <div className="mt-8">
-              <button
-                type="button"
-                disabled={booting || !googleReady}
-                onClick={handleGoogleClick}
-                className="w-full flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+              <div
+                ref={googleButtonRef}
+                className="flex min-h-[56px] items-center justify-center overflow-hidden rounded-2xl bg-white"
               >
-                <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#34A853" d="M10.53 28.59A14.5 14.5 0 0 1 9.5 24c0-1.59.28-3.14.76-4.59l-7.98-6.19A23.99 23.99 0 0 0 0 24c0 3.77.9 7.35 2.56 10.52l7.97-5.93z"/><path fill="#FBBC05" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 5.93C6.51 42.62 14.62 48 24 48z"/></svg>
-                {booting
-                  ? 'Loading Google...'
-                  : tab === 'signup'
-                    ? 'Sign up with Google'
-                    : 'Sign in with Google'}
-              </button>
+                {booting ? "Loading Google..." : null}
+              </div>
             </div>
           ) : null}
 
@@ -234,37 +277,49 @@ const LoginPage = () => {
           </div>
 
           <form onSubmit={handleManualSubmit} className="space-y-4">
-            {tab === 'signup' ? (
+            {tab === "signup" ? (
               <label className="block">
-                <span className="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500">Name</span>
+                <span className="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+                  Name
+                </span>
                 <input
                   required
                   value={form.name}
-                  onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, name: event.target.value }))
+                  }
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-sky-500"
                 />
               </label>
             ) : null}
 
             <label className="block">
-              <span className="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500">Email</span>
+              <span className="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+                Email
+              </span>
               <input
                 required
                 type="email"
                 value={form.email}
-                onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, email: event.target.value }))
+                }
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-sky-500"
               />
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500">Password</span>
+              <span className="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+                Password
+              </span>
               <input
                 required
                 type="password"
                 minLength={8}
                 value={form.password}
-                onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, password: event.target.value }))
+                }
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-sky-500"
               />
             </label>
@@ -274,7 +329,11 @@ const LoginPage = () => {
               disabled={submitting}
               className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {submitting ? 'Submitting...' : tab === 'signup' ? 'Create Admin Account' : 'Sign In Manually'}
+              {submitting
+                ? "Submitting..."
+                : tab === "signup"
+                  ? "Create Admin Account"
+                  : "Sign In Manually"}
             </button>
           </form>
 
@@ -285,12 +344,13 @@ const LoginPage = () => {
           )}
 
           <div className="mt-8 rounded-2xl bg-slate-950 px-5 py-4 text-xs font-bold uppercase tracking-[0.18em] text-sky-100">
-            Backend issues its own JWT after Google or manual credential verification.
+            Backend issues its own JWT after Google or manual credential
+            verification.
           </div>
         </section>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default LoginPage
+export default LoginPage;

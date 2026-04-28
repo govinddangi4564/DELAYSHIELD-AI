@@ -1,6 +1,19 @@
 import { cities } from "../data/cities.js";
 import { simulateTraffic } from "../utils/simulatetraffic.js";
 
+const cityTiers = new Map([
+  ["Bhopal", 2],
+  ["Indore", 2],
+  ["Delhi", 1],
+  ["Mumbai", 1],
+  ["Bangalore", 1],
+  ["Chennai", 1],
+  ["Hyderabad", 1],
+  ["Ahmedabad", 1],
+  ["Pune", 2],
+  ["Jaipur", 2],
+]);
+
 // GET: City traffic (for map)
 export const getCityTraffic = (req, res) => {
   try {
@@ -11,6 +24,7 @@ export const getCityTraffic = (req, res) => {
       const userCity = userCities.find(
         (c) => c.name === city.name
       );
+      const tier = cityTiers.get(city.name) ?? 2;
 
       return {
         ...city,
@@ -19,7 +33,7 @@ export const getCityTraffic = (req, res) => {
         traffic:
           userCity?.traffic ??
           simulateTraffic(
-            city.tier === 1 ? "high" : "medium", // intensity by tier
+            tier === 1 ? "high" : "medium", // intensity by tier
             30,                                  // default weather score
             city.name
           ),
