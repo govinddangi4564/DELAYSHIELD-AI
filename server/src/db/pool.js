@@ -11,6 +11,10 @@ if (!mongoUri) {
 }
 
 export async function initDatabase() {
+  if (!mongoUri) {
+    return null
+  }
+
   if (mongoose.connection.readyState === 1) {
     return mongoose.connection
   }

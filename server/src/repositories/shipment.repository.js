@@ -29,6 +29,11 @@ export async function getShipmentByIdForUser(shipmentId, userId) {
   return mapShipment(shipment)
 }
 
+export async function getShipmentByIdPublic(shipmentId) {
+  const shipment = await Shipment.findOne({ id: shipmentId }).lean()
+  return mapShipment(shipment)
+}
+
 export async function createShipmentForUser(userId, shipment) {
   const payload = shipment.shipmentPayload || shipment.fullPayload || null
 

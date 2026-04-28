@@ -10,6 +10,8 @@ import AIExplanation from '../components/AIExplanation';
 import ModeComparison from '../components/ModeComparison';
 import SimulationPanel from '../components/SimulationPanel';
 import LoadingState from '../components/LoadingState';
+import ShareModal from '../components/ShareModal';
+import { Share2 } from 'lucide-react';
 
 import { 
   getShipments, 
@@ -29,6 +31,7 @@ const ShipmentDetailsPage = () => {
   const [analysis, setAnalysis] = useState(location.state?.analysis || null);
   const [cityTraffic, setCityTraffic] = useState([]);
   const [activeTab, setActiveTab] = useState('tracking'); // 'tracking', 'strategy', 'simulation'
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   
   const [loading, setLoading] = useState(!shipment);
   const [analyzing, setAnalyzing] = useState(!analysis && shipment);
@@ -155,13 +158,27 @@ const ShipmentDetailsPage = () => {
           </p>
         </div>
         
-        {/* Analyzing Status */}
-        {analyzing && (
-          <div className="flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-xl text-sm font-bold animate-pulse">
-            <RefreshCw size={16} className="animate-spin" /> AI Analyzing Route...
-          </div>
-        )}
+        {/* Analyzing Status & Actions */}
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          {analyzing && (
+            <div className="flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-xl text-sm font-bold animate-pulse">
+              <RefreshCw size={16} className="animate-spin" /> AI Analyzing Route...
+            </div>
+          )}
+          <button 
+            onClick={() => setIsShareModalOpen(true)}
+            className="flex items-center gap-2 bg-white text-blue-600 px-5 py-2.5 rounded-xl text-sm font-black border border-blue-100 shadow-sm hover:shadow-md transition-all group"
+          >
+            <Share2 size={16} className="group-hover:scale-110 transition-transform" /> Share with Delivery Boy
+          </button>
+        </div>
       </header>
+
+      <ShareModal 
+        isOpen={isShareModalOpen} 
+        onClose={() => setIsShareModalOpen(false)} 
+        shipmentId={id} 
+      />
 
       {/* Tabs */}
       <div className="flex overflow-x-auto custom-scrollbar gap-2 mb-6 pb-2">

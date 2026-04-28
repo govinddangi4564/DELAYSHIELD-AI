@@ -373,7 +373,7 @@ function ResizeOnChange({ triggerKey }) {
   return null;
 }
 
-const MapView = ({ shipment, route, cityTrafficData = [] }) => {
+const MapView = ({ shipment, route, cityTrafficData = [], hideControls = false }) => {
   const [showMain, setShowMain] = useState(true);
   const [showAlt, setShowAlt] = useState(true);
   const [showTraffic, setShowTraffic] = useState(false);
@@ -944,26 +944,31 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
           })}
       </MapContainer>
 
-      {!isRoadGeometryReady && (
+      {!hideControls && !isRoadGeometryReady && (
         <div className="absolute inset-x-4 top-4 z-[998] rounded-2xl border border-blue-200 bg-white/92 px-4 py-3 text-sm font-semibold text-blue-700 shadow-lg backdrop-blur-md">
           Loading road route...
         </div>
       )}
 
-      <div className="absolute left-4 top-4 z-[998] rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-[10px] font-bold text-slate-700 shadow-lg backdrop-blur-md">
-        Route source: {String(routeSourceLabel).replace(/-/g, " ")}
-      </div>
+      {!hideControls && (
+        <div className="absolute left-4 top-4 z-[998] rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-[10px] font-bold text-slate-700 shadow-lg backdrop-blur-md">
+          Route source: {String(routeSourceLabel).replace(/-/g, " ")}
+        </div>
+      )}
 
-      <button
-        onClick={toggleFullscreen}
-        className="absolute left-4 top-16 z-[999] inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-[10px] font-bold text-slate-700 shadow-lg backdrop-blur-md hover:bg-white"
-        title={isFullscreen ? "Exit full screen map" : "Open full screen map"}
-      >
-        {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-        {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-      </button>
+      {!hideControls && (
+        <button
+          onClick={toggleFullscreen}
+          className="absolute left-4 top-16 z-[999] inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-[10px] font-bold text-slate-700 shadow-lg backdrop-blur-md hover:bg-white"
+          title={isFullscreen ? "Exit full screen map" : "Open full screen map"}
+        >
+          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+        </button>
+      )}
 
-      <div className="absolute top-4 right-4 z-[999] bg-white/90 backdrop-blur-md border border-slate-200 p-3 lg:p-4 rounded-xl shadow-xl flex flex-col max-w-xs transition-all duration-300">
+      {!hideControls && (
+        <div className="absolute top-4 right-4 z-[999] bg-white/90 backdrop-blur-md border border-slate-200 p-3 lg:p-4 rounded-xl shadow-xl flex flex-col max-w-xs transition-all duration-300">
         <div
           className={`flex items-center justify-between cursor-pointer gap-4 ${isPanelOpen ? "border-b border-slate-200 pb-2 mb-4" : ""}`}
           onClick={() => setIsPanelOpen(!isPanelOpen)}
@@ -1077,6 +1082,7 @@ const MapView = ({ shipment, route, cityTrafficData = [] }) => {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };

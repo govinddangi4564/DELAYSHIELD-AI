@@ -46,6 +46,7 @@ function AppShell() {
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/shipments" element={<ProtectedRoute><ShipmentsPage /></ProtectedRoute>} />
             <Route path="/shipment/:id" element={<ProtectedRoute><ShipmentDetailsPage /></ProtectedRoute>} />
+            <Route path="/share/:id" element={<SharedRoutePage />} />
             <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
             <Route path="/priority-map" element={<ProtectedRoute><PriorityMapPage /></ProtectedRoute>} />
             <Route path="/simulation" element={<ProtectedRoute><SimulationPage /></ProtectedRoute>} />
