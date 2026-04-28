@@ -15,19 +15,19 @@ import {
   BarChart3,
   Search
 } from 'lucide-react';
-import { getShipments } from '../services/api';
+import { getShipments, getCachedShipments } from '../services/api';
 import LoadingState from '../components/LoadingState';
 import { useNavigationLoading } from '../components/NavigationLoadingContext';
 
 const LossImpactPage = () => {
   const { finishNavigation } = useNavigationLoading();
-  const [shipments, setShipments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [shipments, setShipments] = useState(() => getCachedShipments() || []);
+  const [loading, setLoading] = useState(() => !getCachedShipments());
   const [filter, setFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchShipments = async () => {
-    setLoading(true);
+    if (shipments.length === 0) setLoading(true);
     try {
       const data = await getShipments();
       setShipments(data);

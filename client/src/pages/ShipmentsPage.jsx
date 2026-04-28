@@ -11,7 +11,7 @@ import {
   RefreshCw,
   Truck,
 } from 'lucide-react'
-import { analyzeShipment, createShipment, getShipments, transformAnalysis } from '../services/api'
+import { analyzeShipment, createShipment, getShipments, getCachedShipments, transformAnalysis } from '../services/api'
 import LoadingState from '../components/LoadingState'
 import { useNavigationLoading } from '../components/NavigationLoadingContext'
 
@@ -32,8 +32,8 @@ const emptyForm = {
 
 const ShipmentsPage = () => {
   const { finishNavigation } = useNavigationLoading()
-  const [shipments, setShipments] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [shipments, setShipments] = useState(() => getCachedShipments() || [])
+  const [loading, setLoading] = useState(() => !getCachedShipments())
   const [error, setError] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [analysisData, setAnalysisData] = useState(null)
@@ -42,7 +42,7 @@ const ShipmentsPage = () => {
   const [creating, setCreating] = useState(false)
 
   const fetchShipments = async () => {
-    setLoading(true)
+    if (shipments.length === 0) setLoading(true)
     setError(null)
     try {
       const data = await getShipments()
