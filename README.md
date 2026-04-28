@@ -1,276 +1,206 @@
-# 🚀 DelayShield AI
+🚀 DelayShield AI
+Intelligent Logistics Decision Platform (AI + Simulation + Sustainability)
+🧠 Problem Statement
 
-### Supply Chain Disruption Prediction & Intelligent Decision System
+In modern logistics, companies face:
 
----
+🚦 Traffic congestion
+🌧️ Weather disruptions
+⏱️ Delivery delays
+💸 Financial losses
 
-## 🧠 Problem Statement
+Most systems only track shipments, but:
 
-In logistics and supply chain operations, delays occur due to traffic congestion, weather disruptions, and inefficient routing.
+❌ They react after problems occur  
+❌ They don’t provide decision intelligence  
+💡 Solution
 
-The real issue is **late reaction** — companies respond only *after* disruptions occur, leading to:
+DelayShield AI is an AI-powered logistics decision platform that:
 
-* 📉 Increased operational costs
-* ⏱️ Missed delivery deadlines
-* 😞 Poor customer experience
+✔ Predicts disruptions before they occur  
+✔ Suggests optimal decisions (reroute / monitor)  
+✔ Calculates real-time financial loss  
+✔ Tracks carbon emissions for eco decisions  
+✔ Enables simulation-based planning  
 
----
+👉 Transforms logistics from:
 
-## 💡 Solution
-
-**DelayShield AI** is a smart decision-support system that:
-
-* 🔍 Predicts disruptions **before they happen**
-* 🧠 Uses AI to recommend **optimal decisions**
-* 💰 Minimizes losses using **cost analysis**
-* ⚡ Simulates real-world scenarios for better planning
-
-👉 It transforms logistics from **reactive → proactive**
-
----
-
-## ⚙️ System Workflow
-
-### 1️⃣ Data Input Layer
-
-* Shipment data (source, destination, priority, ETA)
-* Traffic data (simulated or API-based)
-* Weather data (optional integration)
-
----
-
-### 2️⃣ Risk Detection Engine
-
-* Classifies risk into:
-
-  * 🟢 Low
-  * 🟡 Medium
-  * 🔴 High
-* Identifies cause:
-
-  * Traffic / Weather / Route inefficiency
-
----
-
-### 3️⃣ 🧠 AI Decision Engine (Core Innovation)
-
-Powered by **Gemini AI + custom logic**
-
+Reactive → Proactive → Intelligent Decision System
+⚙️ SYSTEM WORKFLOW
+User Input → AI Analysis → Risk + Cost + Carbon → Decision → Map Visualization → Action
+🧩 CORE FEATURES
+🤖 1. AI Shipment Analysis
+Input origin & destination
+AI analyzes traffic, weather, delay
+Generates optimized route
+Predicts risk and cost
+🗺️ 2. Live Route Visualization
+Interactive map (Google Maps)
+Route plotting with markers
+Multiple routes comparison
+Click → detailed shipment insights
+⚠️ 3. Risk Analysis Engine
+Risk level: Low / Medium / High
+Factors:
+Traffic
+Weather
+Delay
+Predictive disruption detection
+⏱️ 4. Delay Prediction System
+Estimates delay (in minutes)
+Helps prevent SLA violations
+💰 5. Loss / Cost Impact Engine (🔥 High Value)
+Fuel loss calculation
+SLA penalty risk
+Total financial impact
+Real-time loss tracking
+🧭 6. Priority Intelligence Map (🔥 USP)
+All shipments on one map
+Color-coded:
+🔴 Critical
+🟠 At Risk
+🟢 Safe
+Filter + interaction
+Fleet-level visibility
+📦 7. Multi-Shipment Tracking
+Track multiple shipments
+Monitor entire logistics network
+🧠 8. Smart Priority System
+AI ranks shipments
+Based on:
+Risk
+Delay
+Cost
+🧪 9. What-If Simulation Engine
+Simulate disruptions
+Compare outcomes
+Choose best strategy
+📊 10. Scenario Comparison Dashboard
+Compare:
+Risk
+Cost
+Delay
+Visual insights
+📈 11. Risk Trajectory Prediction
+Future risk over time
+Helps proactive planning
+🚚 12. Multi-Modal Transport Comparison
+Compare Air vs Road
+Metrics:
+Cost
+Time
+CO₂
+Reliability
+🤖 13. AI Strategic Recommendation
 Suggests:
+Reroute
+Monitor
+Proceed
+🌱 14. Carbon Emission Tracking (ESG Feature)
+CO₂ calculation per shipment
+Eco-route suggestions
+Emission saved tracking
+Sustainability insights
+🔐 15. Authentication System
+Google OAuth login
+Secure JWT-based sessions
+User-specific shipment data
+🧑‍💼 16. Admin Control Panel
+Add & manage shipments
+Trigger AI analysis
+Full control dashboard
+📤 17. Delivery Sharing Feature (🔥 Real-world integration)
+Share shipment with driver
+Includes:
+Route
+Risk
+Delay
+Instructions
 
-* 🚛 Rerouting shipments
-* ⏳ Delaying low-priority deliveries
-* 🚨 Prioritizing critical shipments
+👉 Bridges:
 
-📁 Implemented in:
+Office decisions → Field execution
+⚡ 18. Real-Time Dashboard
+Live shipment data
+Risk + cost + carbon insights
+Decision monitoring
+🔁 19. Decision History & Analytics
+Stores past decisions
+Performance tracking
+Improves future planning
+🧠 SYSTEM ARCHITECTURE
+Frontend (React)
+        ↓
+Backend (Node.js + Express)
+        ↓
+AI Engine (Gemini)
+        ↓
+External APIs (Maps + Weather)
+        ↓
+Database (MongoDB)
+🛠️ TECH STACK
 
-```
-src/engine/decision/aiplanner.js
-```
+Frontend:
 
----
+React.js (Vite)
+Tailwind CSS
+Google Maps API
 
-### 4️⃣ 📊 Simulation Engine (What-If Analysis)
+Backend:
 
-* Simulates multiple scenarios
-* Compares outcomes:
+Node.js
+Express.js
 
-  * Before AI decision
-  * After AI decision
+Database:
 
-📁 Implemented in:
+MongoDB
 
-```
-src/engine/simulation/whatifengine.js
-```
+AI:
 
----
+Gemini API
 
-### 5️⃣ 💰 Cost Engine
+Authentication:
 
-* Calculates:
-
-  * Loss due to delays
-  * Savings after optimization
-
-📁 Implemented in:
-
-```
-src/engine/cost/costengine.js
-```
-
----
-
-## 🧩 Key Features
-
-* 📦 Shipment Monitoring APIs
-* ⚠️ Real-Time Risk Detection
-* 🧠 AI-Based Decision Suggestions
-* 💰 Cost Impact Analysis Engine
-* 🗺️ Route Optimization Logic
-* 🔄 What-If Simulation Engine
-* 📊 Before vs After Comparison
-* ⚡ Lightweight In-Memory Processing
-* 🔌 Modular Backend Architecture
-
----
-
-## 🧠 Data Strategy
-
-Instead of a heavy database, the system uses:
-
-* ⚡ In-memory data for ultra-fast processing
-* 📁 Static datasets:
-
-  * `cities.js`
-  * `routes.js`
-  * `shipment.js`
-* 🚦 Traffic simulation utility:
-
-  * `simulatetraffic.js`
-
-👉 This ensures:
-
-* Faster execution
-* Easy testing
-* Hackathon-ready scalability
-
----
-
-## 🏗️ Project Structure
-
-```
-delayshield-ai/
-│
-├── client/                  # React Frontend
-│
-├── server/
-│   ├── src/
-│   │   ├── config/          # AI config (Gemini)
-│   │   ├── controllers/     # Business logic controllers
-│   │   ├── routes/          # API routes
-│   │   ├── engine/
-│   │   │   ├── decision/    # AI planner
-│   │   │   ├── cost/        # Cost engine
-│   │   │   └── simulation/  # What-if engine
-│   │   ├── data/            # Mock datasets
-│   │   ├── utils/           # Traffic simulation
-│   │   └── app.js
-│
-├── docs/                    # PPT, diagrams
-└── README.md
-```
-
----
-
-## 🛠️ Tech Stack
-
-* **Frontend:** React.js
-* **Backend:** Node.js + Express.js
-* **AI Integration:** Gemini API
-* **Data Handling:** In-memory + Mock Data
-* **Simulation:** Custom Engine Logic
-
----
-
-## 🔌 Core APIs
-
-### 📦 Shipment APIs
-
-```
-GET  /api/shipments
-```
-
-### ⚠️ Risk Analysis
-
-```
-POST /api/analyze
-```
-
-### 🧠 AI Decision
-
-```
-POST /api/decision
-```
-
-### 💰 Cost Calculation
-
-```
-POST /api/cost
-```
-
-### 🔄 Simulation (What-If)
-
-```
-POST /api/simulate
-```
-
-### 🌍 City Data
-
-```
-GET /api/cities
-```
-
----
-
-## 🎯 Target Users
-
-* 🚛 Logistics companies
-* 📦 Supply chain managers
-* 🚚 Fleet operators
-
----
-
-## 🏆 Why This Project Stands Out
-
-* ✅ Solves a **real-world logistics problem**
-* 🧠 Focuses on **decision intelligence (not just tracking)**
-* ⚡ Combines:
-
-  * AI + Simulation + Cost Analysis
-* 🏗️ Clean modular backend architecture
-* 🚀 Ready for real-world scaling
-
----
-
-## 👥 Team Members
-
-* Chaitanya Verma
-* Devesh Sahu
-* Govind Dangi
-
----
-
-## 🚀 Getting Started
-
-### 1️⃣ Clone Repository
-
-```
-git clone https://github.com/your-username/delayshield-ai.git
-cd delayshield-ai
-```
-
----
-
-### 2️⃣ Backend Setup
-
-```
+Google OAuth
+🔌 CORE APIs
+POST /api/analyze          # AI shipment analysis
+POST /api/simulate         # What-if simulation
+POST /api/cost             # Cost calculation
+GET  /api/shipment         # Get shipments
+POST /api/shipment         # Create shipment
+GET  /api/cities           # City data
+POST /api/auth/google      # Authentication
+👥 TARGET USERS
+🚛 Logistics companies
+📦 Supply chain managers
+🚚 Fleet operators
+🏆 WHY THIS PROJECT STANDS OUT
+✔ Not just tracking → Decision Intelligence System  
+✔ Combines AI + Simulation + Cost + Sustainability  
+✔ Real-world logistics use case  
+✔ Visual + interactive dashboard  
+✔ End-to-end workflow (input → decision → execution)
+📌 FUTURE SCOPE
+📍 Real-time GPS tracking
+📱 Mobile app for drivers
+☁️ Cloud deployment (AWS/GCP)
+🤖 Advanced ML prediction
+🔗 ERP integration
+🚀 GETTING STARTED
+Backend
 cd server
 npm install
 npm run dev
-```
-
----
-
-### 3️⃣ Frontend Setup
-
-```
+Frontend
 cd client
 npm install
-npm run dev
-```
 
----
+Open the backend service URL:
+https://delayshield-ai.onrender.com/
+Wait for a few seconds to allow the server to restart.
+Once the backend is active, open the frontend application:
+https://delayshield-ai.vercel.app/
+npm run dev
 
 ## 🧪 Sample Workflow (How to Use APIs)
 
@@ -305,7 +235,3 @@ This project is designed as a **hackathon-ready intelligent system** with a stro
 * Real-world applicability
 * Clean architecture
 * AI-driven decision making
-
----
-
-🔥 *Built for impact. Designed for scale.*
