@@ -11,7 +11,9 @@ import {
   getShipments, 
   getHistory, 
   createDynamicShipment,
-  transformGeneratedShipment
+  transformGeneratedShipment,
+  getCachedShipments,
+  getCachedHistory
 } from '../services/api';
 import { RefreshCw, List, LayoutDashboard, TrendingUp } from 'lucide-react';
 
@@ -19,18 +21,18 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const { finishNavigation } = useNavigationLoading();
   
-  const [shipments, setShipments] = useState([]);
-  const [history, setHistory] = useState([]);
+  const [shipments, setShipments] = useState(() => getCachedShipments() || []);
+  const [history, setHistory] = useState(() => getCachedHistory() || []);
   
-  const [loadingShipments, setLoadingShipments] = useState(true);
-  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingShipments, setLoadingShipments] = useState(() => !getCachedShipments());
+  const [loadingHistory, setLoadingHistory] = useState(() => !getCachedHistory());
   const [loadingGenerate, setLoadingGenerate] = useState(false);
   const [error, setError] = useState(null);
 
   // ── Fetch shipments and history on mount ──
   const fetchGlobalData = useCallback(async (isInitial = false) => {
-    if (isInitial) setLoadingShipments(true);
-    setLoadingHistory(true);
+    if (isInitial && shipments.length === 0) setLoadingShipments(true);
+    if (history.length === 0) setLoadingHistory(true);
     setError(null);
     try {
       const [shipmentData, historyData] = await Promise.all([
@@ -42,12 +44,14 @@ const DashboardPage = () => {
       setHistory(historyData);
     } catch (err) {
       console.error('Error loading dashboard data:', err);
-      setError('Failed to load system data. Is the backend running?');
+      if (shipments.length === 0) {
+        setError('Failed to load system data. Is the backend running?');
+      }
     } finally {
       setLoadingShipments(false);
       setLoadingHistory(false);
     }
-  }, []);
+  }, [shipments.length, history.length]);
 
   useEffect(() => {
     fetchGlobalData(true);
@@ -243,7 +247,7 @@ const DashboardPage = () => {
                   <ShipmentCard
                     shipment={shipment}
                     isSelected={false}
-                    onClick={() => navigate(`/shipment/${shipment.id}`)}
+                    onClick={() => navigate(`/shipment/${shipment.id}`, { state: { shipment } })}
                   />
                   <div className="mt-2 text-[10px] font-bold uppercase tracking-widest text-center text-blue-500 bg-blue-50 rounded-lg py-1 border border-blue-100 shadow-sm">
                     Click to Open Intelligence Hub

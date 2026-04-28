@@ -342,11 +342,6 @@ const LoginPage = () => {
               {error}
             </div>
           )}
-
-          <div className="mt-8 rounded-2xl bg-slate-950 px-5 py-4 text-xs font-bold uppercase tracking-[0.18em] text-sky-100">
-            Backend issues its own JWT after Google or manual credential
-            verification.
-          </div>
         </section>
       </div>
     </div>

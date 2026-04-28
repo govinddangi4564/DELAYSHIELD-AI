@@ -304,10 +304,25 @@ export const transformSimulationResult = (result, index) => {
   }
 }
 
-export const getShipments = async () => {
+let cachedShipments = null;
+let cachedShipmentsTime = 0;
+
+export const getCachedShipments = () => {
+  if (cachedShipments && Date.now() - cachedShipmentsTime < 30000) {
+    return cachedShipments;
+  }
+  return null;
+}
+
+export const getShipments = async (force = false) => {
+  if (!force && cachedShipments && Date.now() - cachedShipmentsTime < 30000) {
+    return cachedShipments;
+  }
   const response = await api.get('/shipment')
   const shipments = response.data?.data || response.data || []
-  return shipments.map(transformShipment)
+  cachedShipments = shipments.map(transformShipment)
+  cachedShipmentsTime = Date.now()
+  return cachedShipments
 }
 
 export const createShipment = async (payload) => {
@@ -326,9 +341,24 @@ export const analyzeShipment = async (payload) => {
   return response.data
 }
 
-export const getCityTraffic = async () => {
+let cachedCityTraffic = null;
+let cachedCityTrafficTime = 0;
+
+export const getCachedCityTraffic = () => {
+  if (cachedCityTraffic && Date.now() - cachedCityTrafficTime < 30000) {
+    return cachedCityTraffic;
+  }
+  return null;
+}
+
+export const getCityTraffic = async (force = false) => {
+  if (!force && cachedCityTraffic && Date.now() - cachedCityTrafficTime < 30000) {
+    return cachedCityTraffic;
+  }
   const response = await api.get('/city/traffic')
-  return response.data?.data || response.data || []
+  cachedCityTraffic = response.data?.data || response.data || []
+  cachedCityTrafficTime = Date.now()
+  return cachedCityTraffic
 }
 
 export const runSimulation = async (baseInput, scenarios) => {
@@ -339,13 +369,28 @@ export const runSimulation = async (baseInput, scenarios) => {
   return response.data
 }
 
-export const getHistory = async () => {
+let cachedHistory = null;
+let cachedHistoryTime = 0;
+
+export const getCachedHistory = () => {
+  if (cachedHistory && Date.now() - cachedHistoryTime < 30000) {
+    return cachedHistory;
+  }
+  return null;
+}
+
+export const getHistory = async (force = false) => {
+  if (!force && cachedHistory && Date.now() - cachedHistoryTime < 30000) {
+    return cachedHistory;
+  }
   const response = await api.get('/history')
   const history = response.data?.history || response.data?.data || []
-  return history.map((h) => ({
+  cachedHistory = history.map((h) => ({
     ...h,
     riskLevel: h.riskScore > 70 ? 'High' : h.riskScore > 40 ? 'Medium' : 'Low'
   }))
+  cachedHistoryTime = Date.now()
+  return cachedHistory
 }
 
 export const saveDecision = async (decision) => {

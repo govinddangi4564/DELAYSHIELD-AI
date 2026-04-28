@@ -6,18 +6,18 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, Legend 
 } from 'recharts';
 import HistoryPanel from '../components/HistoryPanel';
-import { getHistory } from '../services/api';
+import { getHistory, getCachedHistory } from '../services/api';
 import LoadingState from '../components/LoadingState';
 import { useNavigationLoading } from '../components/NavigationLoadingContext';
 
 const AnalyticsPage = () => {
   const { finishNavigation } = useNavigationLoading();
-  const [historyData, setHistoryData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [historyData, setHistoryData] = useState(() => getCachedHistory() || []);
+  const [loading, setLoading] = useState(() => !getCachedHistory());
   const [error, setError] = useState(null);
 
   const fetchHistory = async () => {
-    setLoading(true);
+    if (historyData.length === 0) setLoading(true);
     setError(null);
     try {
       const data = await getHistory();

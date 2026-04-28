@@ -13,11 +13,11 @@ import LoadingState from '../components/LoadingState';
 import ShareModal from '../components/ShareModal';
 import { Share2 } from 'lucide-react';
 
-import { 
-  getShipments, 
-  analyzeShipment, 
-  transformAnalysis, 
-  getCityTraffic 
+import {
+  getShipments,
+  analyzeShipment,
+  transformAnalysis,
+  getCityTraffic
 } from '../services/api';
 import { useNavigationLoading } from '../components/NavigationLoadingContext';
 
@@ -32,7 +32,7 @@ const ShipmentDetailsPage = () => {
   const [cityTraffic, setCityTraffic] = useState([]);
   const [activeTab, setActiveTab] = useState('tracking'); // 'tracking', 'strategy', 'simulation'
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  
+
   const [loading, setLoading] = useState(!shipment);
   const [analyzing, setAnalyzing] = useState(!analysis && shipment);
   const [error, setError] = useState(null);
@@ -45,7 +45,7 @@ const ShipmentDetailsPage = () => {
     const fetchData = async () => {
       try {
         let currentShipment = shipment;
-        
+
         // Fetch shipment if not provided in state
         if (!currentShipment) {
           const allShipments = await getShipments();
@@ -133,11 +133,11 @@ const ShipmentDetailsPage = () => {
 
   return (
     <div className="min-h-screen bg-blue-50 p-4 md:p-8 pt-8 pb-24 md:pb-8">
-      
+
       {/* Header */}
       <header className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <button 
+          <button
             onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 text-sm font-bold text-blue-500 hover:text-blue-700 transition-colors mb-3"
           >
@@ -145,11 +145,10 @@ const ShipmentDetailsPage = () => {
           </button>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-black text-blue-950 tracking-tight">{shipment.id}</h1>
-            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest ${
-              shipment.status === 'Delayed' ? 'bg-red-100 text-red-700' :
-              shipment.status === 'In Transit' ? 'bg-blue-100 text-blue-700' :
-              'bg-emerald-100 text-emerald-700'
-            }`}>
+            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest ${shipment.status === 'Delayed' ? 'bg-red-100 text-red-700' :
+                shipment.status === 'In Transit' ? 'bg-blue-100 text-blue-700' :
+                  'bg-emerald-100 text-emerald-700'
+              }`}>
               {shipment.status}
             </span>
           </div>
@@ -157,7 +156,7 @@ const ShipmentDetailsPage = () => {
             {shipment.origin.name} → {shipment.destination.name}
           </p>
         </div>
-        
+
         {/* Analyzing Status & Actions */}
         <div className="flex flex-col md:flex-row items-center gap-4">
           {analyzing && (
@@ -165,7 +164,7 @@ const ShipmentDetailsPage = () => {
               <RefreshCw size={16} className="animate-spin" /> AI Analyzing Route...
             </div>
           )}
-          <button 
+          <button
             onClick={() => setIsShareModalOpen(true)}
             className="flex items-center gap-2 bg-white text-blue-600 px-5 py-2.5 rounded-xl text-sm font-black border border-blue-100 shadow-sm hover:shadow-md transition-all group"
           >
@@ -174,35 +173,32 @@ const ShipmentDetailsPage = () => {
         </div>
       </header>
 
-      <ShareModal 
-        isOpen={isShareModalOpen} 
-        onClose={() => setIsShareModalOpen(false)} 
-        shipmentId={id} 
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        shipmentId={id}
       />
 
       {/* Tabs */}
       <div className="flex overflow-x-auto custom-scrollbar gap-2 mb-6 pb-2">
         <button
           onClick={() => setActiveTab('tracking')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
-            activeTab === 'tracking' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-white text-blue-600 hover:bg-blue-50'
-          }`}
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'tracking' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-white text-blue-600 hover:bg-blue-50'
+            }`}
         >
           <MapIcon size={16} /> Live Tracking & Metrics
         </button>
         <button
           onClick={() => setActiveTab('strategy')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
-            activeTab === 'strategy' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white text-indigo-600 hover:bg-indigo-50'
-          }`}
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'strategy' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white text-indigo-600 hover:bg-indigo-50'
+            }`}
         >
           <BrainCircuit size={16} /> AI Strategy
         </button>
         <button
           onClick={() => setActiveTab('simulation')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
-            activeTab === 'simulation' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30' : 'bg-white text-purple-600 hover:bg-purple-50'
-          }`}
+          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'simulation' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30' : 'bg-white text-purple-600 hover:bg-purple-50'
+            }`}
         >
           <Activity size={16} /> Simulation Workspace
         </button>
@@ -210,7 +206,7 @@ const ShipmentDetailsPage = () => {
 
       {/* Tab Content */}
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-        
+
         {/* Tracking Tab */}
         {activeTab === 'tracking' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -225,9 +221,9 @@ const ShipmentDetailsPage = () => {
             </div>
             <div className="lg:col-span-4 flex flex-col gap-6">
               <RiskMeter riskScore={riskScore} factors={riskFactors} />
-              <CostAnalysis 
-                currentCost={currentCost} 
-                potentialLoss={potentialLoss} 
+              <CostAnalysis
+                currentCost={currentCost}
+                potentialLoss={potentialLoss}
                 lossImpact={analysis?.lossImpact || shipment?.lossImpact}
               />
             </div>
@@ -236,33 +232,41 @@ const ShipmentDetailsPage = () => {
 
         {/* Strategy Tab */}
         {activeTab === 'strategy' && (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-stretch">
-              <DecisionPanel insights={insights} onExecute={handleActionExecution} />
-              {insights ? (
-                <AIExplanation
-                  summary={insights.summary}
-                  explanation={insights.explanation}
-                  keyFactors={insights.keyFactors}
-                />
-              ) : (
-                <div className="glass-panel border-2 border-blue-100 p-8 text-blue-400 font-bold flex items-center justify-center">
-                  {analyzing ? 'AI explanation generating...' : 'AI explanation unavailable.'}
-                </div>
+          analyzing ? (
+            <LoadingState
+              title="Generating AI Strategy"
+              subtitle="Processing route constraints and priority requirements."
+              steps={['Analyzing multi-modal options', 'Evaluating financial risk', 'Formulating recommendation']}
+            />
+          ) : (
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-stretch">
+                <DecisionPanel insights={insights} onExecute={handleActionExecution} />
+                {insights ? (
+                  <AIExplanation
+                    summary={insights.summary}
+                    explanation={insights.explanation}
+                    keyFactors={insights.keyFactors}
+                  />
+                ) : (
+                  <div className="glass-panel border-2 border-blue-100 p-8 text-blue-400 font-bold flex items-center justify-center">
+                    AI strategy unavailable.
+                  </div>
+                )}
+              </div>
+
+              {modeComparison && (
+                <ModeComparison data={modeComparison} />
               )}
             </div>
-            
-            {modeComparison && (
-              <ModeComparison data={modeComparison} />
-            )}
-          </div>
+          )
         )}
 
         {/* Simulation Tab */}
         {activeTab === 'simulation' && (
           <div className="space-y-8">
-            <SimulationPanel 
-              shipment={shipment} 
+            <SimulationPanel
+              shipment={shipment}
               onSimulate={handleSimulate}
             />
           </div>

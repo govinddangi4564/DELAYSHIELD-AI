@@ -36,7 +36,7 @@ import {
   Truck,
   Wallet
 } from 'lucide-react'
-import { getShipments, getCityTraffic } from '../services/api'
+import { getShipments, getCityTraffic, getCachedShipments, getCachedCityTraffic } from '../services/api'
 import LoadingState from '../components/LoadingState'
 import { useNavigationLoading } from '../components/NavigationLoadingContext'
 
@@ -109,9 +109,22 @@ function FitBounds({ shipments, selectedShipment }) {
 
 const PriorityMapPage = () => {
   const { finishNavigation } = useNavigationLoading()
-  const [shipments, setShipments] = useState([])
-  const [cityTraffic, setCityTraffic] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [shipments, setShipments] = useState(() => {
+    const cached = getCachedShipments()
+    if (!cached) return []
+    return cached.filter(s => s.origin && s.origin.lat !== undefined && (s.origin.lng !== undefined || s.origin.lon !== undefined))
+      .map(s => {
+        let pStatus = 'On Track'
+        const risk = s.riskScore || 'Low'
+        const status = s.status || ''
+        const priority = s.priority || 'Medium'
+        if (priority === 'Critical' || risk === 'High' || status === 'Delayed') pStatus = 'Critical'
+        else if (priority === 'High' || risk === 'Medium' || status === 'Monitoring') pStatus = 'At Risk'
+        return { ...s, priorityStatus: pStatus, mapPos: [s.origin.lat, s.origin.lng || s.origin.lon] }
+      })
+  })
+  const [cityTraffic, setCityTraffic] = useState(() => getCachedCityTraffic() || [])
+  const [loading, setLoading] = useState(() => !getCachedShipments() || !getCachedCityTraffic())
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('All')
   const [selectedShipment, setSelectedShipment] = useState(null)
@@ -133,7 +146,7 @@ const PriorityMapPage = () => {
   }
 
   const fetchShipments = async () => {
-    setLoading(true)
+    if (shipments.length === 0 || cityTraffic.length === 0) setLoading(true)
     setError(null)
     try {
       const [data, trafficData] = await Promise.all([
