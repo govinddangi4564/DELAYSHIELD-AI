@@ -225,6 +225,12 @@ npm run dev
 ```bash
 cd client
 npm install
+
+Open the backend service URL:
+https://delayshield-ai.onrender.com/
+Wait for a few seconds to allow the server to restart.
+Once the backend is active, open the frontend application:
+https://delayshield-ai.vercel.app/
 npm run dev
 ```
 
