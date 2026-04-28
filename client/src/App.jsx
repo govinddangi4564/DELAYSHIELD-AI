@@ -3,14 +3,13 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import DashboardPage from './pages/DashboardPage'
 import ShipmentsPage from './pages/ShipmentsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
-import SettingsPage from './pages/SettingsPage'
 import Sidebar from './components/Sidebar'
 import SimulationPage from './pages/SimulationPage'
 import PriorityMapPage from './pages/PriorityMapPage'
 import ShipmentDetailsPage from './pages/ShipmentDetailsPage'
 import LoginPage from './pages/LoginPage'
 import LossImpactPage from './pages/LossImpactPage'
-import SharedRoutePage from './pages/SharedRoutePage'
+import LandingPage from './pages/LandingPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import { NavigationLoadingProvider } from './components/NavigationLoadingContext'
 import { useAuth } from './auth/AuthContext'
@@ -28,9 +27,7 @@ function ScrollToTop() {
 function AppShell() {
   const location = useLocation()
   const { isAuthenticated } = useAuth()
-  const showSidebar = isAuthenticated && 
-    location.pathname !== '/login' && 
-    !location.pathname.startsWith('/share/')
+  const showSidebar = isAuthenticated && !['/', '/login'].includes(location.pathname)
 
   return (
     <div className="min-h-screen bg-blue-50 font-sans text-blue-950 flex">
@@ -44,17 +41,17 @@ function AppShell() {
 
         <div className="relative z-10 w-full h-full">
           <Routes>
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />} />
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/shipments" element={<ProtectedRoute><ShipmentsPage /></ProtectedRoute>} />
             <Route path="/shipment/:id" element={<ProtectedRoute><ShipmentDetailsPage /></ProtectedRoute>} />
             <Route path="/share/:id" element={<SharedRoutePage />} />
             <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             <Route path="/priority-map" element={<ProtectedRoute><PriorityMapPage /></ProtectedRoute>} />
             <Route path="/simulation" element={<ProtectedRoute><SimulationPage /></ProtectedRoute>} />
             <Route path="/loss-engine" element={<ProtectedRoute><LossImpactPage /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </main>

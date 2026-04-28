@@ -14,7 +14,9 @@ import {
 import L from 'leaflet'
 import {
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
+  ChevronDown,
   Clock,
   Filter,
   Fuel,
@@ -113,10 +115,22 @@ const PriorityMapPage = () => {
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('All')
   const [selectedShipment, setSelectedShipment] = useState(null)
+  const [isProfileMinimized, setIsProfileMinimized] = useState(false)
   const [showTraffic, setShowTraffic] = useState(true)
   const [showRoutes, setShowRoutes] = useState(true)
   const [mapStyle, setMapStyle] = useState('clean'); // 'clean' or 'classic'
   const [optimizeFor, setOptimizeFor] = useState('time'); // 'time' or 'eco'
+
+  const focusShipment = (shipment) => {
+    // Force repeated clicks on the same marker to re-center the map and refresh the detail drawer.
+    setIsProfileMinimized(false)
+    setSelectedShipment({ ...shipment, _focusAt: Date.now() })
+  }
+
+  const returnToMapOverview = () => {
+    setIsProfileMinimized(false)
+    setSelectedShipment(null)
+  }
 
   const fetchShipments = async () => {
     setLoading(true)
@@ -390,64 +404,11 @@ const PriorityMapPage = () => {
               key={shipment.id}
               position={shipment.mapPos}
               icon={createMarkerIcon(shipment.priorityStatus, selectedShipment?.id === shipment.id, !!selectedShipment)}
+              riseOnHover
               eventHandlers={{
-                click: () => setSelectedShipment(shipment),
+                click: () => focusShipment(shipment),
               }}
-            >
-              <Popup className="priority-popup" maxWidth={300}>
-                <div className="w-64 overflow-hidden rounded-xl border-0 p-0">
-                  <div className={`p-3 text-white ${
-                    shipment.priorityStatus === 'Critical' ? 'bg-red-600' : 
-                    shipment.priorityStatus === 'At Risk' ? 'bg-amber-600' : 'bg-emerald-600'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Intelligence Hub</span>
-                      <Truck size={14} />
-                    </div>
-                    <h3 className="text-base font-black">{shipment.id}</h3>
-                  </div>
-                  <div className="bg-white p-4">
-                    <div className="mb-4 space-y-1">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Current Route</p>
-                      <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                        <span className="truncate">{shipment.origin.name}</span>
-                        <ArrowRight size={14} className="text-slate-400 shrink-0" />
-                        <span className="truncate">{shipment.destination.name}</span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div className="rounded-lg bg-slate-50 p-2 border border-slate-100">
-                        <p className="text-[9px] font-black uppercase tracking-tighter text-slate-400">Risk & Delay</p>
-                        <p className={`text-sm font-black ${
-                          shipment.riskScore === 'High' ? 'text-red-600' : 
-                          shipment.riskScore === 'Medium' ? 'text-amber-600' : 'text-emerald-600'
-                        }`}>
-                          {shipment.riskScore} • {shipment.riskFactors?.delay || 0}m
-                        </p>
-                      </div>
-                      <div className="rounded-lg bg-slate-50 p-2 border border-slate-100">
-                        <p className="text-[9px] font-black uppercase tracking-tighter text-slate-400">AI Decision</p>
-                        <p className="text-[11px] font-black text-slate-700 leading-tight">
-                          {shipment.priorityStatus === 'Critical' ? '⚡ REROUTE' : '👁️ MONITOR'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Add timestamp to force FitBounds to re-run even if already selected
-                        setSelectedShipment({ ...shipment, _focusAt: Date.now() });
-                      }}
-                      className="w-full rounded-xl bg-slate-900 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-transform active:scale-95 shadow-lg shadow-slate-200"
-                    >
-                      Focus View
-                    </button>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
+            />
           ))}
 
           {selectedShipment && showRoutes && (
@@ -621,20 +582,30 @@ const PriorityMapPage = () => {
 
         {/* Selected Shipment Sidebar / Drawer */}
         {selectedShipment && (
-          <div className="absolute right-6 top-6 z-[1000] w-full max-w-md glass-panel border border-slate-200 shadow-2xl rounded-3xl overflow-hidden animate-in fade-in slide-in-from-right duration-300">
+          <div className="absolute right-6 -top-6 z-[1000] w-full max-w-md glass-panel border border-slate-200 shadow-2xl rounded-3xl overflow-hidden animate-in fade-in slide-in-from-right duration-300">
             <div className={`p-6 text-white ${
               selectedShipment.priorityStatus === 'Critical' ? 'bg-red-600' : 
               selectedShipment.priorityStatus === 'At Risk' ? 'bg-amber-600' : 'bg-emerald-600'
             }`}>
               <div className="flex items-center justify-between mb-4">
-                <div className="rounded-xl bg-white/20 p-2 backdrop-blur-sm">
-                  <ShieldAlert size={20} />
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={returnToMapOverview}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-3 py-2 text-xs font-black uppercase tracking-widest transition hover:bg-white/25"
+                    aria-label="Back to all routes and cities"
+                    title="Back to overview"
+                  >
+                    <ArrowLeft size={14} />
+                    Back
+                  </button>
                 </div>
-                <button 
-                  onClick={() => setSelectedShipment(null)}
+                <button
+                  onClick={() => setIsProfileMinimized((current) => !current)}
                   className="rounded-full bg-black/20 p-1.5 transition hover:bg-black/40"
+                  aria-label={isProfileMinimized ? 'Expand intelligence profile' : 'Minimize intelligence profile'}
+                  title={isProfileMinimized ? 'Expand' : 'Minimize'}
                 >
-                  <RefreshCw size={14} className="rotate-45" />
+                  <ChevronDown size={14} className={`transition-transform ${isProfileMinimized ? 'rotate-180' : ''}`} />
                 </button>
               </div>
               <div className="flex items-baseline gap-2">
@@ -642,6 +613,7 @@ const PriorityMapPage = () => {
               </div>
               <h2 className="text-2xl font-black tracking-tight">{selectedShipment.id}</h2>
             </div>
+            {!isProfileMinimized && (
             <div className="p-5 space-y-5 max-h-[85vh] overflow-y-auto custom-scrollbar">
               {/* Origin-Destination Header */}
               <div className="flex items-center justify-between">
@@ -777,6 +749,7 @@ const PriorityMapPage = () => {
                 </button>
               </div>
             </div>
+            )}
           </div>
         )}
       </main>
