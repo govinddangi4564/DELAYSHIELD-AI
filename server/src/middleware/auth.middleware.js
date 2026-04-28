@@ -3,7 +3,6 @@ import dotenv from 'dotenv'
 import { findUserById } from '../repositories/user.repository.js'
 
 dotenv.config()
-
 const JWT_SECRET = process.env.JWT_SECRET
 
 function getTokenFromRequest(req) {

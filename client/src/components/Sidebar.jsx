@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { BarChart3, LayoutDashboard, LogOut, Map, PackageSearch, RefreshCw, Settings, TrendingUp } from 'lucide-react'
+import { BarChart3, LayoutDashboard, LogOut, Map, PackageSearch, RefreshCw, TrendingUp } from 'lucide-react'
 import { useNavigationLoading } from './NavigationLoadingContext'
 import { useAuth } from '../auth/AuthContext'
 
@@ -16,7 +16,6 @@ const Sidebar = () => {
     { to: '/priority-map', icon: Map, label: 'Priority Map' },
     { to: '/loss-engine', icon: TrendingUp, label: 'Loss Engine' },
     { to: '/analytics', icon: BarChart3, label: 'Analytics' },
-    { to: '/settings', icon: Settings, label: 'Settings' },
   ]
 
   const initials = String(user?.name || 'Admin')
