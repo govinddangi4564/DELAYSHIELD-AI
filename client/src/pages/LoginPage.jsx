@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useEffect, useRef, useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { KeyRound, ShieldCheck, Route, Truck, UserPlus } from "lucide-react";
+import { Navigate, useLocation, useNavigate, Link } from "react-router-dom";
+import { KeyRound, ShieldCheck, Route, Truck, UserPlus, ArrowLeft } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -173,9 +173,19 @@ const LoginPage = () => {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#dbeafe,_transparent_35%),linear-gradient(135deg,_#eff6ff_0%,_#dbeafe_40%,_#e0f2fe_100%)] text-slate-950">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center gap-10 px-6 py-12 lg:flex-row lg:items-center lg:gap-16">
         <section className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-sky-700 shadow-sm backdrop-blur">
-            <ShieldCheck size={14} />
-            DelayShield Admin Access
+          <Link
+            to="/"
+            className="mb-6 inline-flex items-center gap-2 rounded-xl bg-white/50 px-4 py-2 text-sm font-bold text-sky-700 shadow-sm backdrop-blur transition hover:bg-white/80 hover:text-sky-900"
+          >
+            <ArrowLeft size={16} />
+            Back to Home
+          </Link>
+
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-sky-700 shadow-sm backdrop-blur">
+              <ShieldCheck size={14} />
+              DelayShield Admin Access
+            </div>
           </div>
 
           <h1 className="mt-6 max-w-xl font-black tracking-tight text-slate-950 text-5xl leading-none">
