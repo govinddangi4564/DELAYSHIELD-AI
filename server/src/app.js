@@ -14,7 +14,7 @@ app.use(cors({
 app.use(express.json())
 
 app.get('/', (req, res) => {
-  res.send('DelayShield AI Backend Running')
+  res.redirect(process.env.CLIENT_URL || 'https://delayshield-ai.vercel.app/')
 })
 
 app.use('/api', routes)
