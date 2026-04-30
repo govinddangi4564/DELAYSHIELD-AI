@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -19,16 +20,34 @@ import {
 
 const AuthContext = createContext(null);
 
-// Session timeout in milliseconds (15 minutes)
-const SESSION_TIMEOUT = 15 * 60 * 1000;
+// Session timeout in milliseconds (4 hours)
+const SESSION_TIMEOUT = 4 * 60 * 60 * 1000;
 const LAST_ACTIVITY_KEY = "delayshield_last_activity";
+const SESSION_EXPIRES_KEY = "delayshield_session_expires_at";
+
+const getSessionExpiry = () => {
+  const value = localStorage.getItem(SESSION_EXPIRES_KEY);
+  const expiry = Number(value);
+
+  return Number.isFinite(expiry) ? expiry : null;
+};
+
+const setSessionWindow = () => {
+  const now = Date.now();
+  localStorage.setItem(LAST_ACTIVITY_KEY, String(now));
+  localStorage.setItem(SESSION_EXPIRES_KEY, String(now + SESSION_TIMEOUT));
+};
+
+const isSessionExpired = () => {
+  const expiry = getSessionExpiry();
+  return expiry !== null && Date.now() >= expiry;
+};
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(getStoredUser());
   const [token, setToken] = useState(getStoredToken());
   const [loading, setLoading] = useState(true);
   const inactivityTimerRef = useRef(null);
-  const activityListenerRef = useRef(null);
 
   // Initialize session check and inactivity tracking
   useEffect(() => {
@@ -40,14 +59,26 @@ export function AuthProvider({ children }) {
         return;
       }
 
+      if (isSessionExpired()) {
+        clearStoredSession();
+        localStorage.removeItem(LAST_ACTIVITY_KEY);
+        localStorage.removeItem(SESSION_EXPIRES_KEY);
+        setUser(null);
+        setToken(null);
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await getCurrentUser();
         setUser(response.user);
         setToken(existingToken);
         persistSession({ token: existingToken, user: response.user });
-        updateLastActivity();
+        setSessionWindow();
       } catch {
         clearStoredSession();
+        localStorage.removeItem(LAST_ACTIVITY_KEY);
+        localStorage.removeItem(SESSION_EXPIRES_KEY);
         setUser(null);
         setToken(null);
       } finally {
@@ -59,39 +90,36 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Update last activity timestamp
-  const updateLastActivity = () => {
-    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
-  };
-
-  // Check session validity
-  const checkSessionValidity = () => {
-    const lastActivity = localStorage.getItem(LAST_ACTIVITY_KEY);
-    if (!lastActivity) return false;
-
-    const timeSinceLastActivity = Date.now() - parseInt(lastActivity);
-    if (timeSinceLastActivity > SESSION_TIMEOUT) {
-      performLogout();
-      return false;
-    }
-    return true;
-  };
+  const updateLastActivity = useCallback(() => {
+    setSessionWindow();
+  }, []);
 
   // Perform logout
-  const performLogout = () => {
+  const performLogout = useCallback(() => {
     clearStoredSession();
     setUser(null);
     setToken(null);
     localStorage.removeItem(LAST_ACTIVITY_KEY);
+    localStorage.removeItem(SESSION_EXPIRES_KEY);
 
     // Prevent back navigation
     window.history.pushState(null, "", "/login");
     window.addEventListener("popstate", () => {
       window.history.pushState(null, "", "/login");
     });
-  };
+  }, []);
+
+  // Check session validity
+  const checkSessionValidity = useCallback(() => {
+    if (isSessionExpired()) {
+      performLogout();
+      return false;
+    }
+    return true;
+  }, [performLogout]);
 
   // Setup inactivity timer
-  const setupInactivityTimer = () => {
+  const setupInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current) {
       clearInterval(inactivityTimerRef.current);
     }
@@ -101,10 +129,10 @@ export function AuthProvider({ children }) {
         clearInterval(inactivityTimerRef.current);
       }
     }, 60000); // Check every minute
-  };
+  }, [checkSessionValidity]);
 
   // Setup activity listeners
-  const setupActivityListeners = () => {
+  const setupActivityListeners = useCallback(() => {
     const handleUserActivity = () => {
       updateLastActivity();
       if (!inactivityTimerRef.current) {
@@ -116,14 +144,12 @@ export function AuthProvider({ children }) {
     events.forEach((event) => {
       document.addEventListener(event, handleUserActivity);
     });
-
-    activityListenerRef.current = handleUserActivity;
     return () => {
       events.forEach((event) => {
         document.removeEventListener(event, handleUserActivity);
       });
     };
-  };
+  }, [setupInactivityTimer, updateLastActivity]);
 
   // Handle session cleared event
   useEffect(() => {
@@ -131,6 +157,7 @@ export function AuthProvider({ children }) {
       setUser(null);
       setToken(null);
       localStorage.removeItem(LAST_ACTIVITY_KEY);
+      localStorage.removeItem(SESSION_EXPIRES_KEY);
     };
 
     window.addEventListener(
@@ -157,14 +184,14 @@ export function AuthProvider({ children }) {
         cleanup();
       };
     }
-  }, [token, user]);
+  }, [token, user, setupActivityListeners, setupInactivityTimer]);
 
   const signInWithGoogle = async (credential) => {
     const response = await loginWithGoogleCredential(credential);
     persistSession(response);
     setUser(response.user);
     setToken(response.token);
-    updateLastActivity();
+    setSessionWindow();
     return response;
   };
 
@@ -173,7 +200,7 @@ export function AuthProvider({ children }) {
     persistSession(response);
     setUser(response.user);
     setToken(response.token);
-    updateLastActivity();
+    setSessionWindow();
     return response;
   };
 
@@ -182,7 +209,7 @@ export function AuthProvider({ children }) {
     persistSession(response);
     setUser(response.user);
     setToken(response.token);
-    updateLastActivity();
+    setSessionWindow();
     return response;
   };
 
