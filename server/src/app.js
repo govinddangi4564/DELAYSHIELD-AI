@@ -9,7 +9,12 @@ const app = express()
 const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173'
 
 app.use(cors({
-  origin: allowedOrigin
+  origin: [
+    'http://localhost:5173',
+    'https://delayshield-ai.vercel.app',
+    process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, "") : null
+  ].filter(Boolean),
+  credentials: true
 }))
 app.use(express.json())
 
