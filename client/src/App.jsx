@@ -23,6 +23,7 @@ import SharedRoutePage from "./pages/SharedRoutePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { NavigationLoadingProvider } from "./components/NavigationLoadingContext";
 import { useAuth } from "./auth/AuthContext";
+import { ShipmentProvider } from "./context/ShipmentContext";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -178,9 +179,11 @@ function App() {
   return (
     <BrowserRouter>
       <NavigationLoadingProvider>
-        <BackButtonHandler />
-        <ScrollToTop />
-        <AppShell />
+        <ShipmentProvider>
+          <BackButtonHandler />
+          <ScrollToTop />
+          <AppShell />
+        </ShipmentProvider>
       </NavigationLoadingProvider>
     </BrowserRouter>
   );

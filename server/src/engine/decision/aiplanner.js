@@ -5,61 +5,36 @@ dotenv.config();
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-const SYSTEM_PROMPT = `You are the DelayShield Tactical AI. Your objective is to analyze logistics telemetry and provide strategic routing decisions, including a comparison of different transport modes.
+const SYSTEM_PROMPT = `You are the DelayShield SLA Recovery Planner AI. Your objective is to analyze SLA risk telemetry and recommend optimal recovery actions to prevent SLA breaches.
+
+RECOVERY RULES to strictly follow:
+- If Warehouse > 80, Recommend: "Switch Warehouse"
+- If Traffic > 80, Recommend: "Alternative Route"
+- If SLA Risk > 90, Recommend: "Priority Processing"
 
 You must respond ONLY with a valid JSON object matching this exact schema. Do not include markdown formatting, conversational text, or any other output.
 
 {
-  "summary": "Short headline for the Alert System (max 6 words)",
-  "explanation": "1-2 sentence tactical reasoning for the Decision Panel.",
-  "dominantFactor": "String (e.g. Traffic Saturation, Weather Anomaly)",
-  "identifiedHighways": ["String", "String"],
-  "actions": [
-    {
-      "type": "REROUTE | MONITOR | CONTINUE",
-      "description": "Specific action instructions",
-      "tradeOff": "Pro/Con analysis",
-      "recommended": true
-    }
+  "primaryCause": "String (The main factor driving the SLA risk, e.g. 'Warehouse Congestion')",
+  "recommendedActions": [
+    "String (Specific actionable recommendation 1)",
+    "String (Specific actionable recommendation 2)"
   ],
-  "modeComparison": {
-    "air": {
-      "mode": "Air",
-      "icon": "✈️",
-      "available": true,
-      "transitTime": "string",
-      "baseCost": 0,
-      "fuelSurcharge": 0,
-      "totalCost": 0,
-      "riskScore": 0,
-      "riskLevel": "string",
-      "co2Emissions": 0,
-      "reliabilityScore": 0,
-      "onTimePercent": 0,
-      "recommendedFor": "string",
-      "bestForBadge": "string",
-      "pros": ["string", "string", "string"],
-      "cons": ["string", "string", "string"]
-    },
-    "ocean": { "mode": "Ocean", "icon": "🚢", "available": true, "transitTime": "string", "baseCost": 0, "fuelSurcharge": 0, "totalCost": 0, "riskScore": 0, "riskLevel": "string", "co2Emissions": 0, "reliabilityScore": 0, "onTimePercent": 0, "recommendedFor": "string", "bestForBadge": "string", "pros": ["string", "string", "string"], "cons": ["string", "string", "string"] },
-    "road": { "mode": "Road", "icon": "🚛", "available": true, "transitTime": "string", "baseCost": 0, "fuelSurcharge": 0, "totalCost": 0, "riskScore": 0, "riskLevel": "string", "co2Emissions": 0, "reliabilityScore": 0, "onTimePercent": 0, "recommendedFor": "string", "bestForBadge": "string", "pros": ["string", "string", "string"], "cons": ["string", "string", "string"] },
-    "recommendation": {
-      "bestOverall": "string",
-      "reasoning": "string",
-      "bestForCost": "string",
-      "bestForSpeed": "string",
-      "bestForSustainability": "string"
-    }
-  }
+  "suggestedRoute": "String (Specific National Highway (NH) or Alternative Path)",
+  "recoveryReasoning": "String (1-2 sentence explanation of why these actions were chosen)"
 }`;
 
-function buildPrompt(origin, destination, risk, decision) {
+function buildPrompt(origin, destination, telemetry) {
   return `${SYSTEM_PROMPT}
 
 Route: ${origin} to ${destination}.
-Telemetry: Risk Score ${risk.score}/100, Traffic ${risk.traffic}%, Delay Prob ${risk.delay}%.
-System Baseline Decision: ${decision.action}.
-Identify specific National Highways (NH) or bypasses suitable for this route and provide your JSON assessment.`;
+Telemetry Data:
+- SLA Risk Score: ${telemetry.slaRisk}/100
+- Traffic Congestion: ${telemetry.traffic}%
+- Warehouse Utilization: ${telemetry.warehouse}%
+- Historical Delay Factor: ${telemetry.historicalDelay}%
+
+Provide your strategic JSON assessment for SLA recovery.`;
 }
 
 export const generateAIPlan = async (input = {}) => {
@@ -67,8 +42,10 @@ export const generateAIPlan = async (input = {}) => {
   const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   const { 
-    risk = {}, 
-    decision = {}, 
+    slaRisk = 0,
+    traffic = 0,
+    warehouse = 0,
+    historicalDelay = 0,
     shipmentId = "SHP-0", 
     origin = "Origin", 
     destination = "Destination" 
@@ -79,7 +56,8 @@ export const generateAIPlan = async (input = {}) => {
       throw new Error("AI_KEY_NOT_CONFIGURED");
     }
 
-    const prompt = buildPrompt(origin, destination, risk, decision);
+    const telemetry = { slaRisk, traffic, warehouse, historicalDelay };
+    const prompt = buildPrompt(origin, destination, telemetry);
 
     const { result } = await generateContentWithModelFallback({
       apiKey: GEMINI_API_KEY,
@@ -102,9 +80,7 @@ export const generateAIPlan = async (input = {}) => {
       success: true,
       data: {
         ...parsed,
-        shipmentId,
-        confidence: "High",
-        suggestedRoute: parsed.identifiedHighways?.[0] || "Optimized Path"
+        shipmentId
       }
     };
 
@@ -112,61 +88,29 @@ export const generateAIPlan = async (input = {}) => {
     clearTimeout(timeoutId);
     console.error("[aiplanner] Fallback triggered:", error.message);
 
-    // Return the safe fallback so the dashboard doesn't crash
-    const action = decision?.action || 'MONITOR';
+    // Safe fallback so the engine doesn't crash
     return {
       success: false,
       data: {
-        summary: action === "REROUTE" ? "Strategic Corridor Shift" : "Tactical Monitoring Active",
-        explanation: "Neural link unavailable. System operating on high-fidelity heuristic protocols for schedule integrity.",
-        dominantFactor: "Connectivity Gap",
-        identifiedHighways: ["NH Corridor"],
-        actions: [{ type: action, description: "Follow standard operational protocols", tradeOff: "Reliability priority", recommended: true }]
+        primaryCause: "System Telemetry Unavailable",
+        recommendedActions: ["Monitor Conditions Manually", "Alert Dispatcher"],
+        suggestedRoute: "Current Baseline Route",
+        recoveryReasoning: "Neural link unavailable. Defaulting to standard operational protocols.",
+        shipmentId
       }
     };
   }
 };
 
 function validateAIPayload(payload) {
-  const requiredStrings = ["summary", "explanation", "dominantFactor"];
+  const requiredStrings = ["primaryCause", "suggestedRoute", "recoveryReasoning"];
   for (const field of requiredStrings) {
     if (typeof payload[field] !== "string" || !payload[field].trim()) {
       throw new Error(`AI payload missing or invalid field: "${field}"`);
     }
   }
 
-  if (!Array.isArray(payload.identifiedHighways) || payload.identifiedHighways.length === 0) {
-    throw new Error('AI payload missing required "identifiedHighways" array.');
-  }
-
-  if (!Array.isArray(payload.actions) || payload.actions.length === 0) {
-    throw new Error('AI payload missing required "actions" array.');
-  }
-
-  // Mode comparison validation
-  if (!payload.modeComparison) {
-    throw new Error('AI payload missing required "modeComparison" object.');
-  }
-  if (!payload.modeComparison.air || !payload.modeComparison.ocean || !payload.modeComparison.road) {
-    throw new Error('AI payload missing modes in modeComparison.');
-  }
-  if (!payload.modeComparison.recommendation) {
-    throw new Error('AI payload missing recommendation in modeComparison.');
-  }
-
-  for (const [i, action] of payload.actions.entries()) {
-    const validTypes = ["REROUTE", "MONITOR", "CONTINUE"];
-    if (!validTypes.includes(action.type)) {
-      throw new Error(`Action[${i}].type is invalid: "${action.type}". Must be one of ${validTypes.join(", ")}.`);
-    }
-    if (typeof action.description !== "string") {
-      throw new Error(`Action[${i}].description must be a string.`);
-    }
-    if (typeof action.tradeOff !== "string") {
-      throw new Error(`Action[${i}].tradeOff must be a string.`);
-    }
-    if (typeof action.recommended !== "boolean") {
-      throw new Error(`Action[${i}].recommended must be a boolean.`);
-    }
+  if (!Array.isArray(payload.recommendedActions) || payload.recommendedActions.length === 0) {
+    throw new Error('AI payload missing required "recommendedActions" array.');
   }
 }

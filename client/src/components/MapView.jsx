@@ -373,6 +373,89 @@ function ResizeOnChange({ triggerKey }) {
   return null;
 }
 
+const AnimatedTrackerMarker = ({ shipment, decodedMainPath, needsRoadFallback }) => {
+  const markerRef = useRef(null);
+  const bearingRef = useRef(0);
+
+  useEffect(() => {
+    if (!shipment || !shipment.currentLocation) return;
+
+    let animId;
+    let progress = 0;
+    const startLoc = shipment.currentLocation;
+    const endLoc = shipment.destination;
+
+    if (markerRef.current) {
+      markerRef.current.setIcon(createTrackerIcon({ bearing: 0 }));
+    }
+
+    const tick = () => {
+      progress += 0.0007;
+      if (progress > 1) progress = 0;
+
+      let newLat = null;
+      let newLng = null;
+
+      if (decodedMainPath && decodedMainPath.length > 0) {
+        const totalPoints = decodedMainPath.length;
+        const index = Math.floor(progress * (totalPoints - 1));
+        const nextIndex = Math.min(index + 1, totalPoints - 1);
+        const segmentProgress = progress * (totalPoints - 1) - index;
+        const p1 = decodedMainPath[index];
+        const lookAheadIndex = Math.min(index + 6, totalPoints - 1);
+        const p2 = decodedMainPath[nextIndex];
+        const headingTarget = decodedMainPath[lookAheadIndex] ?? p2;
+
+        if (p1 && p2) {
+          const nextBearing = getSegmentBearing(p1, headingTarget);
+          bearingRef.current = smoothBearing(bearingRef.current, nextBearing);
+
+          newLat = p1.lat + (p2.lat - p1.lat) * segmentProgress;
+          newLng = p1.lng + (p2.lng - p1.lng) * segmentProgress;
+        }
+      } else if (!needsRoadFallback && startLoc && endLoc) {
+        bearingRef.current = smoothBearing(
+          bearingRef.current,
+          getSegmentBearing(startLoc, endLoc),
+          0.12,
+        );
+        newLat = startLoc.lat + (endLoc.lat - startLoc.lat) * progress;
+        newLng = startLoc.lng + (endLoc.lng - startLoc.lng) * progress;
+      }
+
+      if (newLat != null && newLng != null && markerRef.current) {
+        markerRef.current.setLatLng([newLat, newLng]);
+        markerRef.current.setIcon(createTrackerIcon({ bearing: bearingRef.current }));
+      }
+
+      animId = window.requestAnimationFrame(tick);
+    };
+
+    animId = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(animId);
+  }, [shipment, decodedMainPath, needsRoadFallback]);
+
+  if (!shipment || !shipment.currentLocation) return null;
+
+  return (
+    <Marker
+      ref={markerRef}
+      position={[shipment.currentLocation.lat, shipment.currentLocation.lng]}
+      icon={createTrackerIcon({ bearing: 0 })}
+    >
+      <Popup>
+        <div className="text-slate-800 font-bold">
+          <span className="text-blue-600">Live Tracker</span>
+          <br />
+          <span className="text-xs text-slate-600 font-normal">
+            Status: {shipment.status}
+          </span>
+        </div>
+      </Popup>
+    </Marker>
+  );
+};
+
 const MapView = ({ shipment, route, cityTrafficData = [], hideControls = false }) => {
   const [showMain, setShowMain] = useState(true);
   const [showAlt, setShowAlt] = useState(true);
@@ -380,10 +463,8 @@ const MapView = ({ shipment, route, cityTrafficData = [], hideControls = false }
   const [mapStyle, setMapStyle] = useState("classic");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [animatedPos, setAnimatedPos] = useState(null);
   const [realRoadData, setRealRoadData] = useState(null);
   const containerRef = useRef(null);
-  const bearingRef = useRef(0);
   const shipmentKey = shipment
     ? `${shipment.id}-${shipment.origin.lat}-${shipment.origin.lng}-${shipment.destination.lat}-${shipment.destination.lng}`
     : null;
@@ -535,63 +616,7 @@ const MapView = ({ shipment, route, cityTrafficData = [], hideControls = false }
     shipmentKey,
   ]);
 
-  useEffect(() => {
-    if (!shipment) {
-      bearingRef.current = 0;
-      return undefined;
-    }
 
-    let animId;
-    let progress = 0;
-
-    const startLoc = shipment.currentLocation;
-    const endLoc = shipment.destination;
-
-    const tick = () => {
-      progress += 0.0007;
-      if (progress > 1) progress = 0;
-
-      if (decodedMainPath && decodedMainPath.length > 0) {
-        const totalPoints = decodedMainPath.length;
-        const index = Math.floor(progress * (totalPoints - 1));
-        const nextIndex = Math.min(index + 1, totalPoints - 1);
-        const segmentProgress = progress * (totalPoints - 1) - index;
-        const p1 = decodedMainPath[index];
-        const lookAheadIndex = Math.min(index + 6, totalPoints - 1);
-        const p2 = decodedMainPath[nextIndex];
-        const headingTarget = decodedMainPath[lookAheadIndex] ?? p2;
-
-        if (p1 && p2) {
-          const nextBearing = getSegmentBearing(p1, headingTarget);
-          bearingRef.current = smoothBearing(bearingRef.current, nextBearing);
-
-          setAnimatedPos({
-            lat: p1.lat + (p2.lat - p1.lat) * segmentProgress,
-            lng: p1.lng + (p2.lng - p1.lng) * segmentProgress,
-            bearing: bearingRef.current,
-          });
-        }
-      } else if (!needsRoadFallback && startLoc && endLoc) {
-        bearingRef.current = smoothBearing(
-          bearingRef.current,
-          getSegmentBearing(startLoc, endLoc),
-          0.12,
-        );
-        setAnimatedPos({
-          lat: startLoc.lat + (endLoc.lat - startLoc.lat) * progress,
-          lng: startLoc.lng + (endLoc.lng - startLoc.lng) * progress,
-          bearing: bearingRef.current,
-        });
-      } else {
-        setAnimatedPos(null);
-      }
-
-      animId = window.requestAnimationFrame(tick);
-    };
-
-    animId = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(animId);
-  }, [shipment, decodedMainPath, needsRoadFallback]);
 
   const altRoutes = useMemo(() => {
     if (!shipment) return null;
@@ -729,22 +754,11 @@ const MapView = ({ shipment, route, cityTrafficData = [], hideControls = false }
           </Popup>
         </Marker>
 
-        {animatedPos?.lat != null && animatedPos?.lng != null && (
-          <Marker
-            position={[animatedPos.lat, animatedPos.lng]}
-            icon={createTrackerIcon(animatedPos)}
-          >
-            <Popup>
-              <div className="text-slate-800 font-bold">
-                <span className="text-blue-600">Live Tracker</span>
-                <br />
-                <span className="text-xs text-slate-600 font-normal">
-                  Status: {shipment.status}
-                </span>
-              </div>
-            </Popup>
-          </Marker>
-        )}
+        <AnimatedTrackerMarker 
+          shipment={shipment} 
+          decodedMainPath={decodedMainPath} 
+          needsRoadFallback={needsRoadFallback} 
+        />
 
         {showMain && mainPathPositions.length > 0 && (
           <>

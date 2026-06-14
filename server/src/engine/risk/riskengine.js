@@ -1,10 +1,12 @@
 // ------------------------------
-// DEFAULT WEIGHTS (can be tuned)
+// NEW WEIGHTS
 // ------------------------------
 const DEFAULT_WEIGHTS = {
-  traffic: 0.5,
-  weather: 0.3,
-  delay: 0.2,
+  traffic: 0.25,
+  weather: 0.15,
+  warehouse: 0.25,
+  historicalDelay: 0.10,
+  slaGap: 0.25,
 };
 
 // ------------------------------
@@ -22,82 +24,77 @@ const normalizeInput = (value) => {
 const getRiskLevel = (score) => {
   if (score <= 40) return "Low";
   if (score <= 70) return "Medium";
-  return "High";
+  if (score <= 85) return "High";
+  return "Critical";
 };
 
 // ------------------------------
-// RECOMMENDATION ENGINE
+// SLA GAP CALCULATION
 // ------------------------------
-const getRecommendation = (score) => {
-  if (score > 70) return "Reroute or delay shipment";
-  if (score > 40) return "Monitor conditions";
-  return "Safe to proceed";
-};
-
-// ------------------------------
-// RISK REASON (Explainability 🔥)
-// ------------------------------
-const getRiskReason = (traffic, weather, delay) => {
-  if (traffic > 70) return "High traffic congestion detected";
-  if (weather > 70) return "Severe weather conditions detected";
-  if (delay > 70) return "High historical delay probability";
-  return "Moderate operating conditions";
+const calculateSLAGap = (currentETA, slaDeadline) => {
+  if (!currentETA || !slaDeadline) return 0;
+  
+  try {
+    const eta = new Date(currentETA);
+    const deadline = new Date(slaDeadline);
+    
+    // Difference in milliseconds
+    const diffMs = eta.getTime() - deadline.getTime();
+    
+    // Difference in minutes
+    const diffMins = diffMs / (1000 * 60);
+    
+    if (diffMins <= 0) return 0; // On time or early
+    
+    // Normalize to a 0-100 scale. 
+    // E.g., if it's 100+ mins late, risk is 100.
+    return Math.min(100, diffMins); 
+  } catch (error) {
+    return 0;
+  }
 };
 
 // ------------------------------
 // MAIN RISK CALCULATION FUNCTION
 // ------------------------------
 export const calculateRisk = (
-  { traffic = 0, weather = 0, delay = 0 } = {},
+  { traffic = 0, weather = 0, warehouse = 0, historicalDelay = 0, currentETA, slaDeadline } = {},
   weights = DEFAULT_WEIGHTS
 ) => {
   // Normalize inputs
   const t = normalizeInput(traffic);
   const w = normalizeInput(weather);
-  const d = normalizeInput(delay);
-
-  // Ensure weights are valid
-  const totalWeight = weights.traffic + weights.weather + weights.delay;
-
-  const normalizedWeights =
-    totalWeight === 1
-      ? weights
-      : {
-          traffic: weights.traffic / totalWeight,
-          weather: weights.weather / totalWeight,
-          delay: weights.delay / totalWeight,
-        };
+  const wh = normalizeInput(warehouse);
+  const h = normalizeInput(historicalDelay);
+  
+  const rawSlaGap = calculateSLAGap(currentETA, slaDeadline);
+  const sg = normalizeInput(rawSlaGap);
 
   // Calculate score
   const score = parseFloat(
     (
-      normalizedWeights.traffic * t +
-      normalizedWeights.weather * w +
-      normalizedWeights.delay * d
+      weights.traffic * t +
+      weights.weather * w +
+      weights.warehouse * wh +
+      weights.historicalDelay * h +
+      weights.slaGap * sg
     ).toFixed(2)
   );
 
+  const level = getRiskLevel(score);
+
   // Build response
   return {
-    score,
-    level: getRiskLevel(score),
-    recommendation: getRecommendation(score),
+    score: Math.round(score),
+    level,
+    breachProbability: parseFloat((score / 100).toFixed(2)),
 
-    // 🔥 Explainability
-    reason: getRiskReason(t, w, d),
-
-    // 🔍 Transparency (very important)
     breakdown: {
-      traffic: parseFloat((normalizedWeights.traffic * t).toFixed(2)),
-      weather: parseFloat((normalizedWeights.weather * w).toFixed(2)),
-      delay: parseFloat((normalizedWeights.delay * d).toFixed(2)),
-    },
-
-    // Extra metadata (pro touch)
-    inputs: {
-      traffic: t,
-      weather: w,
-      delay: d,
-    },
+      traffic: parseFloat((weights.traffic * t).toFixed(2)),
+      weather: parseFloat((weights.weather * w).toFixed(2)),
+      warehouse: parseFloat((weights.warehouse * wh).toFixed(2)),
+      historical: parseFloat((weights.historicalDelay * h).toFixed(2)),
+      slaGap: parseFloat((weights.slaGap * sg).toFixed(2)),
+    }
   };
 };
