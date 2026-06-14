@@ -445,4 +445,24 @@ export const transformGeneratedShipment = (data) => {
   return { transformed, insights, modeComparison: mc }
 }
 
+export const getCommunicationLogs = async () => {
+  const response = await api.get('/communication/logs')
+  return response.data?.data || []
+}
+
+export const getCommunicationTemplates = async () => {
+  const response = await api.get('/communication/templates')
+  return response.data?.data || []
+}
+
+export const updateCommunicationTemplate = async (id, data) => {
+  const response = await api.put(`/communication/templates/${id}`, data)
+  return response.data
+}
+
+export const triggerManualNotification = async (payload) => {
+  const response = await api.post('/communication/trigger', payload)
+  return response.data
+}
+
 export default api

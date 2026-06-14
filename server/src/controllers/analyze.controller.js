@@ -10,6 +10,7 @@ import { addHistory } from '../engine/history/historyEngine.js'
 import { simulateTraffic } from '../utils/simulatetraffic.js'
 import { generateShipment } from '../engine/decision/shipmentGenerator.js'
 import { createShipmentForUser, getShipmentByIdForUser } from '../repositories/shipment.repository.js'
+import { triggerAllStakeholderNotifications } from '../engine/communication/communicationEngine.js'
 
 export const analyzeShipment = async (req, res) => {
   try {
@@ -103,7 +104,35 @@ export const analyzeShipment = async (req, res) => {
         riskScore: riskResult.score,
         costImpact: formattedImpact
       })
-    } catch {}
+
+      // Automatically trigger stakeholder notifications if delay is predicted or rerouted
+      if (decisionResult.action === 'REROUTE' || (delay && Number(delay) > 0)) {
+        const eventType = decisionResult.action === 'REROUTE' ? 'Route Change' : 'Delay Risk'
+        const routeName = aiHighways[0] || routeData.majorRoads[0] || 'NH48'
+        const shipmentForNotification = {
+          id: safeShipmentId,
+          origin: origin || { name: 'Origin', lat: nLat, lon: nLon },
+          destination: destination || { name: 'Destination', lat: nEndLat, lon: nEndLon },
+          status: decisionResult.action === 'REROUTE' ? 'Rerouted' : (delay > 0 ? 'Delayed' : 'In Transit'),
+          delay: Number(delay || 0),
+          etas: {
+            original: '06:00 PM',
+            updated: delay > 0 ? `+${delay} min` : 'On Time'
+          },
+          traffic: finalTraffic,
+          weather: weatherData.weatherScore || 25,
+          priority: priority || 'Medium'
+        }
+
+        triggerAllStakeholderNotifications(shipmentForNotification, eventType, {
+          reason: delay > 45 ? 'Severe traffic bottleneck' : 'Moderate traffic congestion',
+          alternative: routeName,
+          timeSaving: costResult.savings ? '35' : '15'
+        }).catch(err => console.error('[analyzeShipment] automated notification trigger error:', err.message))
+      }
+    } catch (e) {
+      console.warn('[analyzeShipment] automated notification trigger skipped:', e.message)
+    }
 
     return res.status(200).json({
       success: true,
@@ -174,8 +203,31 @@ export const generateDynamicShipment = async (req, res) => {
         riskScore: newShipment.riskFactors.traffic * 0.5 + newShipment.riskFactors.weather * 0.3 + newShipment.riskFactors.delay * 0.2,
         costImpact: impact
       })
+
+      // Automatically trigger stakeholder notifications for newly generated delayed/high-risk shipment
+      if (newShipment.riskFactors.delay > 0 || ['Delayed', 'High Risk'].includes(newShipment.status)) {
+        const recommendedAction = result.data.insights?.actions?.find(a => a.recommended) || {}
+        const shipmentForNotification = {
+          id: newShipment.id,
+          origin: { name: newShipment.origin.name, lat: newShipment.origin.lat, lon: newShipment.origin.lng },
+          destination: { name: newShipment.destination.name, lat: newShipment.destination.lat, lon: newShipment.destination.lng },
+          status: newShipment.status,
+          delay: newShipment.riskFactors.delay,
+          etas: newShipment.etas,
+          traffic: newShipment.riskFactors.traffic,
+          weather: newShipment.riskFactors.weather,
+          priority: newShipment.riskScore === 'Critical' ? 'Critical' : newShipment.riskScore === 'High' ? 'High' : 'Medium'
+        }
+
+        const eventType = rh.decision === 'Reroute' ? 'Route Change' : 'Delay Risk'
+        triggerAllStakeholderNotifications(shipmentForNotification, eventType, {
+          reason: result.data.insights?.summary || 'Traffic Congestion',
+          alternative: recommendedAction.description?.replace(/Reroute via\s+/i, '') || 'NH48',
+          timeSaving: recommendedAction.costImpact || '35'
+        }).catch(err => console.error('[generateDynamicShipment] automated notification trigger error:', err.message))
+      }
     } catch (e) {
-      console.warn('[analyze-shipment] History save skipped:', e.message)
+      console.warn('[analyze-shipment] History save or notification trigger skipped:', e.message)
     }
 
     return res.status(200).json({
