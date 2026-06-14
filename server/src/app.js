@@ -2,10 +2,27 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import routes from './routes/index.js'
+import { initDatabase } from './db/pool.js'
+import { seedDefaultTemplates } from './engine/communication/communicationEngine.js'
 
 dotenv.config()
 
 const app = express()
+
+let dbInitialized = false
+app.use(async (req, res, next) => {
+  if (!dbInitialized) {
+    try {
+      await initDatabase()
+      await seedDefaultTemplates()
+      dbInitialized = true
+    } catch (err) {
+      console.error('[db] Late database initialization failed in serverless function:', err.message)
+    }
+  }
+  next()
+})
+
 const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173'
 
 app.use(cors({

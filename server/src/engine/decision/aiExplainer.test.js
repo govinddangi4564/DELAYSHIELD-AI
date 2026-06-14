@@ -2,42 +2,43 @@ import { expect } from 'chai';
 import { explainDecision } from './aiExplainer.js';
 
 describe('AI Explainer Engine', () => {
-  it('should explain a High Risk Reroute scenario', () => {
+  it('should explain a High Risk scenario', () => {
     const input = {
       risk: {
         score: 85,
         level: "High",
-        breakdown: { traffic: 45, delay: 30, weather: 10 }
+        breakdown: { traffic: 45, warehouse: 30 }
       },
-      decision: { action: "REROUTE" },
-      cost: { savings: 1500, noActionCost: 5000, rerouteCost: 3500 }
+      recoveryPlan: { primaryCause: "Traffic Congestion" },
+      shipmentId: "SHP-123"
     };
 
     const result = explainDecision(input);
     expect(result).to.have.property('explanation');
-    expect(result.explanation).to.include('CRITICAL ALERT:');
-    expect(result.explanation).to.include('safety score of 85');
-    expect(result.explanation).to.include('INR 1500');
-    expect(result.keyFactors).to.include('traffic');
-    expect(result.summary).to.include('Tactical Reroute');
+    expect(result.explanation).to.include('SLA Risk score is critically high at 85/100');
+    expect(result.explanation).to.include('Warehouse utilization metrics');
+    expect(result.explanation).to.include('Traffic congestion on the current route');
+    expect(result.keyFactors).to.include('Traffic Congestion');
+    expect(result.keyFactors).to.include('Warehouse Load');
+    expect(result.summary).to.include('High probability of SLA breach');
   });
 
-  it('should explain a Moderate Monitor scenario', () => {
+  it('should explain a Moderate scenario', () => {
     const input = {
       risk: {
         score: 55,
         level: "Medium",
-        breakdown: { weather: 35, delay: 20, traffic: 0 }
+        breakdown: { weather: 35, warehouse: 25 }
       },
-      decision: { action: "MONITOR" },
-      cost: { savings: 0, noActionCost: 1000, rerouteCost: 1500 }
+      recoveryPlan: { primaryCause: "Weather Conditions" },
+      shipmentId: "SHP-456"
     };
 
     const result = explainDecision(input);
-    expect(result.keyFactors).to.include('weather');
-    expect(result.explanation).to.include('Challenging weather');
-    expect(result.explanation).to.include('strategic monitoring is advised');
-    expect(result.summary).to.include('Vigilance Mode');
+    expect(result.keyFactors).to.include('Weather Conditions');
+    expect(result.keyFactors).to.include('Warehouse Load');
+    expect(result.explanation).to.include('SLA Risk score is elevated');
+    expect(result.summary).to.include('Moderate SLA risk detected');
   });
 
   it('should explain a Low Risk scenario', () => {
@@ -45,14 +46,13 @@ describe('AI Explainer Engine', () => {
       risk: {
         score: 20,
         level: "Low",
-        breakdown: { traffic: 10, weather: 5, delay: 5 }
+        breakdown: { traffic: 5 }
       },
-      decision: { action: "CONTINUE" },
-      cost: { savings: 0, noActionCost: 200, rerouteCost: 1200 }
+      shipmentId: "SHP-789"
     };
 
     const result = explainDecision(input);
-    expect(result.explanation).to.include('Current trajectory is clear');
-    expect(result.summary).to.equal('Standard Transit: Baseline operations');
+    expect(result.explanation).to.include('All operational parameters are within safe margins');
+    expect(result.summary).to.equal('SLA compliance is currently on track.');
   });
 });

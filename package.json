@@ -1,4 +1,12 @@
 {
+  "name": "delayshield-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cd client && npm install && npm run build && cd ../server && npm install",
+    "test": "cd server && npm install && npm test"
+  },
   "dependencies": {
     "mongoose": "^9.5.0"
   }
