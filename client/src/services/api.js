@@ -341,6 +341,16 @@ export const analyzeShipment = async (payload) => {
   return response.data
 }
 
+export const analyzeSLA = async (payload) => {
+  const response = await api.post('/sla/analyze', payload)
+  return response.data?.data || response.data
+}
+
+export const getShipmentSLA = async (id) => {
+  const response = await api.get(`/sla/shipment/${id}`)
+  return response.data?.data || response.data
+}
+
 let cachedCityTraffic = null;
 let cachedCityTrafficTime = 0;
 

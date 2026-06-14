@@ -7,6 +7,7 @@ import historyRoutes from './history.route.js'
 import riskRoutes from './risk.route.js'
 import decisionRoutes from './decision.route.js'
 import authRoutes from './auth.route.js'
+import slaGuardianRoutes from './slaGuardian.route.js'
 import { generateDynamicShipment } from '../controllers/analyze.controller.js'
 import { requireAuth } from '../middleware/auth.middleware.js'
 
@@ -24,6 +25,7 @@ router.use('/simulation', simulationRoutes)
 router.use('/history', historyRoutes)
 router.use('/risk', riskRoutes)
 router.use('/decision', decisionRoutes)
+router.use('/sla', slaGuardianRoutes)
 
 router.post('/analyze-shipment', requireAuth, generateDynamicShipment)
 
